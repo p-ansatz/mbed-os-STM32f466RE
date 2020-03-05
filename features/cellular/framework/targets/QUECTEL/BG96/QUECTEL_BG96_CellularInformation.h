@@ -23,12 +23,11 @@ namespace mbed {
 
 class QUECTEL_BG96_CellularInformation: public AT_CellularInformation {
 public:
-    QUECTEL_BG96_CellularInformation(ATHandler &at, AT_CellularDevice &device);
+    QUECTEL_BG96_CellularInformation(ATHandler &at);
     virtual ~QUECTEL_BG96_CellularInformation();
 
 public: // AT_CellularInformation
     virtual nsapi_error_t get_iccid(char *buf, size_t buf_size);
-    virtual nsapi_error_t get_revision(char *buf, size_t buf_size);
 };
 
 } /* namespace mbed */

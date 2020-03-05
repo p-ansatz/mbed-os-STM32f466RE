@@ -2,7 +2,6 @@
 mbed SDK
 SPDX-License-Identifier: Apache-2.0
 Copyright (c) 2011-2013 ARM Limited
-SPDX-License-Identifier: Apache-2.0
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -110,7 +109,6 @@ CORTEX_SYMBOLS = {
                         "__MBED_CMSIS_RTOS_CM", "__DSP_PRESENT=1U"],
 }
 
-UNSUPPORTED_C_LIB_EXCEPTION_STRING = "{} C library option not supported for this target."
 
 class mbedToolchain(with_metaclass(ABCMeta, object)):
     OFFICIALLY_SUPPORTED = False
@@ -133,7 +131,7 @@ class mbedToolchain(with_metaclass(ABCMeta, object)):
     profile_template = {'common': [], 'c': [], 'cxx': [], 'asm': [], 'ld': []}
 
     def __init__(self, target, notify=None, macros=None, build_profile=None,
-                 build_dir=None, coverage_patterns=None):
+                 build_dir=None):
         self.target = target
         self.name = self.__class__.__name__
 
@@ -190,9 +188,6 @@ class mbedToolchain(with_metaclass(ABCMeta, object)):
 
         # Used by the mbed Online Build System to build in chrooted environment
         self.CHROOT = None
-
-        self.coverage_supported = False
-        self.coverage_patterns = coverage_patterns
 
         # post-init hook used by the online compiler TODO: remove this.
         self.init()
@@ -899,6 +894,10 @@ class mbedToolchain(with_metaclass(ABCMeta, object)):
     def add_regions(self):
         """Add regions to the build profile, if there are any.
         """
+
+        if not getattr(self.target, "bootloader_supported", False):
+            return
+
         if self.config.has_regions:
             try:
                 regions = list(self.config.regions)
@@ -1090,36 +1089,6 @@ class mbedToolchain(with_metaclass(ABCMeta, object)):
             where = join(self.build_dir, self.PROFILE_FILE_NAME + "-" + key)
             self._overwrite_when_not_equal(where, json.dumps(
                 to_dump, sort_keys=True, indent=4))
-
-    def check_and_add_minimal_printf(self, target):
-        """Add toolchain flag if minimal-printf is selected."""
-        if (
-            getattr(target, "printf_lib", "std") == "minimal-printf"
-            and "-DMBED_MINIMAL_PRINTF" not in self.flags["common"]
-        ):
-            self.flags["common"].append("-DMBED_MINIMAL_PRINTF")
-
-    def check_c_lib_supported(self, target, toolchain):
-        """
-        Check and raise an exception if the requested C library is not supported,
-
-        target.c_lib is modified to have the lowercased string of its original string.
-        This is done to be case insensitive when validating.
-        """
-        if  hasattr(target, "default_lib"):
-            raise NotSupportedException(
-                   "target.default_lib is no longer supported, please use target.c_lib for C library selection."
-                )
-        if  hasattr(target, "c_lib"):
-            target.c_lib = target.c_lib.lower()
-            if (
-                hasattr(target, "supported_c_libs") == False
-                or toolchain not in target.supported_c_libs
-                or target.c_lib not in target.supported_c_libs[toolchain]
-            ):
-                raise NotSupportedException(
-                   UNSUPPORTED_C_LIB_EXCEPTION_STRING.format(target.c_lib)
-                )
 
     @staticmethod
     def _overwrite_when_not_equal(filename, content):

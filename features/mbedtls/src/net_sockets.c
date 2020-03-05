@@ -45,7 +45,6 @@
 #endif
 
 #include "mbedtls/net_sockets.h"
-#include "mbedtls/error.h"
 
 #include <string.h>
 
@@ -148,7 +147,7 @@ void mbedtls_net_init( mbedtls_net_context *ctx )
 int mbedtls_net_connect( mbedtls_net_context *ctx, const char *host,
                          const char *port, int proto )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     struct addrinfo hints, *addr_list, *cur;
 
     if( ( ret = net_prepare() ) != 0 )
@@ -314,7 +313,7 @@ int mbedtls_net_accept( mbedtls_net_context *bind_ctx,
                         mbedtls_net_context *client_ctx,
                         void *client_ip, size_t buf_size, size_t *ip_len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     int type;
 
     struct sockaddr_storage client_addr;
@@ -456,7 +455,7 @@ int mbedtls_net_set_nonblock( mbedtls_net_context *ctx )
 
 int mbedtls_net_poll( mbedtls_net_context *ctx, uint32_t rw, uint32_t timeout )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     struct timeval tv;
 
     fd_set read_fds;
@@ -541,7 +540,7 @@ void mbedtls_net_usleep( unsigned long usec )
  */
 int mbedtls_net_recv( void *ctx, unsigned char *buf, size_t len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     int fd = ((mbedtls_net_context *) ctx)->fd;
 
     if( fd < 0 )
@@ -578,7 +577,7 @@ int mbedtls_net_recv( void *ctx, unsigned char *buf, size_t len )
 int mbedtls_net_recv_timeout( void *ctx, unsigned char *buf,
                               size_t len, uint32_t timeout )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     struct timeval tv;
     fd_set read_fds;
     int fd = ((mbedtls_net_context *) ctx)->fd;
@@ -621,7 +620,7 @@ int mbedtls_net_recv_timeout( void *ctx, unsigned char *buf,
  */
 int mbedtls_net_send( void *ctx, const unsigned char *buf, size_t len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     int fd = ((mbedtls_net_context *) ctx)->fd;
 
     if( fd < 0 )

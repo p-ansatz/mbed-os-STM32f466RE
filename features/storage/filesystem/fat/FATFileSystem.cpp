@@ -93,7 +93,7 @@ public:
     Deferred &operator=(const Deferred &);
 
 public:
-    Deferred(T t, Callback<void(T)> ondefer = nullptr)
+    Deferred(T t, Callback<void(T)> ondefer = NULL)
         : _t(t), _ondefer(ondefer)
     {
     }

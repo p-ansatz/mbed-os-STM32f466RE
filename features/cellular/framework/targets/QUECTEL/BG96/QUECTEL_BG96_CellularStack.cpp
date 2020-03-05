@@ -31,8 +31,7 @@ static const int sslctxID = 0;
 
 using namespace mbed;
 
-QUECTEL_BG96_CellularStack::QUECTEL_BG96_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type, AT_CellularDevice &device) :
-    AT_CellularStack(atHandler, cid, stack_type, device)
+QUECTEL_BG96_CellularStack::QUECTEL_BG96_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type) : AT_CellularStack(atHandler, cid, stack_type)
 #ifdef MBED_CONF_CELLULAR_OFFLOAD_DNS_QUERIES
 #if (MBED_CONF_CELLULAR_OFFLOAD_DNS_QUERIES != 1)
 #error Define cellular.offload-dns-queries to null or 1.
@@ -220,6 +219,16 @@ void QUECTEL_BG96_CellularStack::urc_qiurc(urc_type_t urc_type)
             sock->_cb(sock->_data);
         }
     }
+}
+
+int QUECTEL_BG96_CellularStack::get_max_socket_count()
+{
+    return BG96_SOCKET_MAX;
+}
+
+bool QUECTEL_BG96_CellularStack::is_protocol_supported(nsapi_protocol_t protocol)
+{
+    return (protocol == NSAPI_UDP || protocol == NSAPI_TCP);
 }
 
 nsapi_error_t QUECTEL_BG96_CellularStack::socket_close_impl(int sock_id)

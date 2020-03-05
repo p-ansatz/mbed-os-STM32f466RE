@@ -23,7 +23,7 @@ namespace mbed {
 
 class QUECTEL_BG96_ControlPlane_netif: public AT_ControlPlane_netif {
 public:
-    QUECTEL_BG96_ControlPlane_netif(ATHandler &at, int cid, AT_CellularDevice &device);
+    QUECTEL_BG96_ControlPlane_netif(ATHandler &at, int cid);
     virtual ~QUECTEL_BG96_ControlPlane_netif() {};
 
 // ControlPlane_netif

@@ -1,6 +1,9 @@
 #include "netsocket/WiFiAccessPoint.h"
 
-WiFiAccessPoint::WiFiAccessPoint() = default;
+WiFiAccessPoint::WiFiAccessPoint()
+{
+    memset(&_ap, 0, sizeof(_ap));
+}
 
 WiFiAccessPoint::WiFiAccessPoint(nsapi_wifi_ap_t ap)
 {

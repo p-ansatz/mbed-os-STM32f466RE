@@ -1,7 +1,6 @@
 /*
  * mbed Microcontroller Library
  * Copyright (c) 2006-2016 ARM Limited
- * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,9 +90,7 @@ FATFileSystem fs("sd", &sd);
 #define FSFAT_FOPEN_TEST_05      fsfat_fopen_test_05
 #define FSFAT_FOPEN_TEST_06      fsfat_fopen_test_06
 #define FSFAT_FOPEN_TEST_07      fsfat_fopen_test_07
-#if !defined(__MICROLIB)
 #define FSFAT_FOPEN_TEST_08      fsfat_fopen_test_08
-#endif
 #define FSFAT_FOPEN_TEST_09      fsfat_fopen_test_09
 #define FSFAT_FOPEN_TEST_10      fsfat_fopen_test_10
 #define FSFAT_FOPEN_TEST_11      fsfat_fopen_test_11
@@ -862,7 +859,6 @@ control_t fsfat_fopen_test_07(const size_t call_count)
  *
  * @return on success returns CaseNext to continue to next test case, otherwise will assert on errors.
  */
-#if !defined(__MICROLIB)
 control_t fsfat_fopen_test_08(const size_t call_count)
 {
     FILE *fp = NULL;
@@ -929,7 +925,7 @@ control_t fsfat_fopen_test_08(const size_t call_count)
     fclose(fp);
     return CaseNext;
 }
-#endif // !defined(__MICROLIB)
+
 
 /** @brief  test for operation of ftell()
  *
@@ -1579,10 +1575,7 @@ Case cases[] = {
 #endif
     Case("FSFAT_FOPEN_TEST_06: fopen() with bad filenames (minimal).", FSFAT_FOPEN_TEST_06),
     Case("FSFAT_FOPEN_TEST_07: fopen()/errno handling.", FSFAT_FOPEN_TEST_07),
-#if !defined(__MICROLIB)
-    // Microlib does not support ferror()
     Case("FSFAT_FOPEN_TEST_08: ferror()/clearerr()/errno handling.", FSFAT_FOPEN_TEST_08),
-#endif
     Case("FSFAT_FOPEN_TEST_09: ftell() handling.", FSFAT_FOPEN_TEST_09),
     Case("FSFAT_FOPEN_TEST_10: remove() test.", FSFAT_FOPEN_TEST_10),
     Case("FSFAT_FOPEN_TEST_11: rename().", FSFAT_FOPEN_TEST_11),

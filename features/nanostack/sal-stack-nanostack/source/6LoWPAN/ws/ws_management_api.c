@@ -220,32 +220,20 @@ int ws_management_fhss_timing_configure(
     if (!cur || !ws_info(cur)) {
         return -1;
     }
-
-    if (fhss_uc_dwell_interval && fhss_uc_dwell_interval < 15) {
-        return -2;
-    }
-
-    if (fhss_bc_dwell_interval && fhss_bc_dwell_interval < 15) {
-        return -2;
-    }
-
-    bool updated_configure = false;
-
-    if (fhss_uc_dwell_interval > 0 && cur->ws_info->fhss_uc_dwell_interval != fhss_uc_dwell_interval) {
+    if (fhss_uc_dwell_interval > 0) {
         cur->ws_info->fhss_uc_dwell_interval = fhss_uc_dwell_interval;
-        updated_configure = true;
     }
-    if (fhss_broadcast_interval > 0 && cur->ws_info->fhss_bc_interval != fhss_broadcast_interval) {
+    if (fhss_broadcast_interval > 0) {
         cur->ws_info->fhss_bc_interval = fhss_broadcast_interval;
-        updated_configure = true;
+
     }
-    if (fhss_bc_dwell_interval > 0 && cur->ws_info->fhss_bc_dwell_interval != fhss_bc_dwell_interval) {
+    if (fhss_bc_dwell_interval > 0) {
         cur->ws_info->fhss_bc_dwell_interval = fhss_bc_dwell_interval;
-        updated_configure = true;
+
     }
 
     // if settings change reset_restart for the settings needed
-    if (updated_configure && (cur->lowpan_info & INTERFACE_NWK_ACTIVE)) {
+    if (cur->lowpan_info & INTERFACE_NWK_ACTIVE) {
         // bootstrap active need to restart
         ws_bootstrap_restart(interface_id);
     }
@@ -271,38 +259,23 @@ int ws_management_fhss_unicast_channel_function_configure(
         return -2;
     }
 
-    if (dwell_interval && dwell_interval < 15) {
-        return -2;
-    }
-
     if (channel_function == WS_FIXED_CHANNEL && fixed_channel == 0xffff) {
         fixed_channel = 0;
         tr_warn("Fixed channel not configured. Set to 0");
     }
 
-    bool updated_config = false;
 
-    if (cur->ws_info->fhss_uc_channel_function != channel_function) {
-        cur->ws_info->fhss_uc_channel_function = channel_function;
-        updated_config = true;
-    }
-
+    cur->ws_info->fhss_uc_channel_function = channel_function;
     if (cur->ws_info->fhss_uc_channel_function == WS_FIXED_CHANNEL) {
-        if (cur->ws_info->fhss_uc_fixed_channel != fixed_channel) {
-            cur->ws_info->fhss_uc_fixed_channel = fixed_channel;
-            updated_config = true;
-        }
+        cur->ws_info->fhss_uc_fixed_channel = fixed_channel;
     } else {
         cur->ws_info->fhss_uc_fixed_channel = 0xffff;
     }
 
-    if (dwell_interval && cur->ws_info->fhss_uc_dwell_interval != dwell_interval) {
-        cur->ws_info->fhss_uc_dwell_interval = dwell_interval;
-        updated_config = true;
-    }
+    cur->ws_info->fhss_uc_dwell_interval = dwell_interval;
 
     // if settings change reset_restart for the settings needed
-    if (updated_config && (cur->lowpan_info & INTERFACE_NWK_ACTIVE)) {
+    if (cur->lowpan_info & INTERFACE_NWK_ACTIVE) {
         // bootstrap active need to restart
         ws_bootstrap_restart(interface_id);
     }
@@ -330,43 +303,23 @@ int ws_management_fhss_broadcast_channel_function_configure(
         return -2;
     }
 
-    if (dwell_interval && dwell_interval < 15) {
-        return -2;
-    }
-
     if (channel_function == WS_FIXED_CHANNEL && fixed_channel == 0xffff) {
         fixed_channel = 0;
         tr_warn("Fixed channel not configured. Set to 0");
     }
 
-    bool updated_config = false;
-
-    if (cur->ws_info->fhss_bc_channel_function != channel_function) {
-        cur->ws_info->fhss_bc_channel_function = channel_function;
-        updated_config = true;
-    }
-
+    cur->ws_info->fhss_bc_channel_function = channel_function;
     if (cur->ws_info->fhss_bc_channel_function == WS_FIXED_CHANNEL) {
-        if (cur->ws_info->fhss_bc_fixed_channel != fixed_channel) {
-            cur->ws_info->fhss_bc_fixed_channel = fixed_channel;
-            updated_config = true;
-        }
+        cur->ws_info->fhss_bc_fixed_channel = fixed_channel;
     } else {
         cur->ws_info->fhss_bc_fixed_channel = 0xffff;
     }
 
-    if (dwell_interval > 0 && cur->ws_info->fhss_bc_dwell_interval != dwell_interval) {
-        cur->ws_info->fhss_bc_dwell_interval = dwell_interval;
-        updated_config = true;
-    }
-
-    if (broadcast_interval > 0 && cur->ws_info->fhss_bc_interval != broadcast_interval) {
-        cur->ws_info->fhss_bc_interval = broadcast_interval;
-        updated_config = true;
-    }
+    cur->ws_info->fhss_bc_dwell_interval = dwell_interval;
+    cur->ws_info->fhss_bc_interval = broadcast_interval;
 
     // if settings change reset_restart for the settings needed
-    if (updated_config && (cur->lowpan_info & INTERFACE_NWK_ACTIVE)) {
+    if (cur->lowpan_info & INTERFACE_NWK_ACTIVE) {
         // bootstrap active need to restart
         ws_bootstrap_restart(interface_id);
     }

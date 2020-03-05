@@ -24,19 +24,19 @@
 #include "ns_trace.h"
 #define TRACE_GROUP "nslp"
 
-class Nanostack::LoWPANNDInterface final : public Nanostack::MeshInterface {
+class Nanostack::LoWPANNDInterface : public Nanostack::MeshInterface {
 public:
-    nsapi_error_t bringup(bool dhcp, const char *ip,
-                          const char *netmask, const char *gw,
-                          nsapi_ip_stack_t stack = IPV6_STACK,
-                          bool blocking = true) override;
-    nsapi_error_t bringdown() override;
-    nsapi_error_t get_gateway(SocketAddress *sockAddr) override;
+    virtual nsapi_error_t bringup(bool dhcp, const char *ip,
+                                  const char *netmask, const char *gw,
+                                  nsapi_ip_stack_t stack = IPV6_STACK,
+                                  bool blocking = true);
+    virtual nsapi_error_t bringdown();
+    virtual char *get_gateway(char *buf, nsapi_size_t buflen);
 
     friend class Nanostack;
     friend class ::LoWPANNDInterface;
 private:
-    using MeshInterface::MeshInterface;
+    LoWPANNDInterface(NanostackRfPhy &phy) : MeshInterface(phy) { }
     mesh_error_t init();
     mesh_error_t mesh_connect();
     mesh_error_t mesh_disconnect();
@@ -156,15 +156,13 @@ mesh_error_t Nanostack::LoWPANNDInterface::mesh_disconnect()
     return MESH_ERROR_UNKNOWN;
 }
 
-nsapi_error_t Nanostack::LoWPANNDInterface::get_gateway(SocketAddress *sockAddr)
+char *Nanostack::LoWPANNDInterface::get_gateway(char *buf, nsapi_size_t buflen)
 {
     NanostackLockGuard lock;
-    char buf[NSAPI_IPv6_SIZE];
-    if (nd_tasklet_get_router_ip_address(buf, NSAPI_IPv6_SIZE) == 0) {
-        sockAddr->set_ip_address(buf);
-        return NSAPI_ERROR_OK;
+    if (nd_tasklet_get_router_ip_address(buf, buflen) == 0) {
+        return buf;
     }
-    return NSAPI_ERROR_NO_ADDRESS;
+    return NULL;
 }
 
 bool LoWPANNDInterface::getRouterIpAddress(char *address, int8_t len)

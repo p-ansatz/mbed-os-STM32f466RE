@@ -30,22 +30,6 @@
 #include "stm32xx_emac_config.h"
 #include "stm32xx_emac.h"
 
-#include "mbed-trace/mbed_trace.h"
-
-#if defined(ETH_IP_VERSION_V2)
-#define TRACE_GROUP "STE2"
-#else
-#define TRACE_GROUP "STE1"
-#endif
-
-/* mbed trace feature is supported */
-/* ex in mbed_app.json */
-/*   "mbed-trace.enable": "1" */
-
-/* mbed_trace: debug traces (tr_debug) can be disabled here with no change in mbed_app.json */
-// #undef TRACE_LEVEL_DEBUG
-// #define TRACE_LEVEL_DEBUG 0
-
 #if defined(ETH_IP_VERSION_V2)
 #include "lan8742/lan8742.h"
 #include "lwip/memp.h"
@@ -59,6 +43,7 @@
 #define THREAD_PRIORITY         (osPriorityHigh)
 
 #define PHY_TASK_PERIOD_MS      200
+#define ETH_ARCH_PHY_ADDRESS    (0x00)
 
 #define STM_HWADDR_SIZE         (6)
 #define STM_ETH_MTU_SIZE        1500
@@ -97,13 +82,13 @@ ETH_DMADescTypeDef  DMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptor
 #pragma location=0x30040400
 uint8_t Rx_Buff[ETH_RX_DESC_CNT][ETH_MAX_PACKET_SIZE]; /* Ethernet Receive Buffers */
 
-#elif defined ( __CC_ARM )  /* ARMC5 */
+#elif defined ( __CC_ARM )  /* MDK ARM Compiler */
 
 __attribute__((section(".RxDecripSection"))) ETH_DMADescTypeDef  DMARxDscrTab[ETH_RX_DESC_CNT]; /* Ethernet Rx DMA Descriptors */
 __attribute__((section(".TxDecripSection"))) ETH_DMADescTypeDef  DMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptors */
-__attribute__((section(".RxArraySection"))) uint8_t Rx_Buff[ETH_RX_DESC_CNT][ETH_MAX_PACKET_SIZE]; /* Ethernet Receive Buffer */
+__attribute__((section(".RxArraySection"))) uint8_t Rx_Buff[ETH_RX_DESC_CNT][ETH_RX_BUFFER_SIZE]; /* Ethernet Receive Buffer */
 
-#elif defined ( __GNUC__ ) /* GCC & ARMC6*/
+#elif defined ( __GNUC__ ) /* GNU Compiler */ 
 
 ETH_DMADescTypeDef DMARxDscrTab[ETH_RX_DESC_CNT] __attribute__((section(".RxDecripSection"))); /* Ethernet Rx DMA Descriptors */
 ETH_DMADescTypeDef DMATxDscrTab[ETH_TX_DESC_CNT] __attribute__((section(".TxDecripSection")));   /* Ethernet Tx DMA Descriptors */
@@ -119,7 +104,8 @@ static int32_t ETH_PHY_IO_ReadReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t *
 static int32_t ETH_PHY_IO_WriteReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t RegVal);
 static int32_t ETH_PHY_IO_GetTick(void);
 
-static lan8742_IOCtx_t LAN8742_IOCtx = {
+static lan8742_IOCtx_t LAN8742_IOCtx =
+{
     ETH_PHY_IO_Init,
     ETH_PHY_IO_DeInit,
     ETH_PHY_IO_WriteReg,
@@ -163,25 +149,26 @@ int32_t _phy_get_state()
 
 bool _phy_get_duplex_and_speed(int32_t phy_state, uint32_t *duplex, uint32_t *speed)
 {
-    switch (phy_state) {
-        case LAN8742_STATUS_100MBITS_FULLDUPLEX:
-            *duplex = ETH_FULLDUPLEX_MODE;
-            *speed = ETH_SPEED_100M;
-            break;
-        case LAN8742_STATUS_100MBITS_HALFDUPLEX:
-            *duplex = ETH_HALFDUPLEX_MODE;
-            *speed = ETH_SPEED_100M;
-            break;
-        case LAN8742_STATUS_10MBITS_FULLDUPLEX:
-            *duplex = ETH_FULLDUPLEX_MODE;
-            *speed = ETH_SPEED_10M;
-            break;
-        case LAN8742_STATUS_10MBITS_HALFDUPLEX:
-            *duplex = ETH_HALFDUPLEX_MODE;
-            *speed = ETH_SPEED_10M;
-            break;
-        default:
-            return false;
+    switch (phy_state)
+    {
+    case LAN8742_STATUS_100MBITS_FULLDUPLEX:
+        *duplex = ETH_FULLDUPLEX_MODE;
+        *speed = ETH_SPEED_100M;
+        break;
+    case LAN8742_STATUS_100MBITS_HALFDUPLEX:
+        *duplex = ETH_HALFDUPLEX_MODE;
+        *speed = ETH_SPEED_100M;
+        break;
+    case LAN8742_STATUS_10MBITS_FULLDUPLEX:
+        *duplex = ETH_FULLDUPLEX_MODE;
+        *speed = ETH_SPEED_10M;
+        break;
+    case LAN8742_STATUS_10MBITS_HALFDUPLEX:
+        *duplex = ETH_HALFDUPLEX_MODE;
+        *speed = ETH_SPEED_10M;
+        break;
+    default:
+        return false;
     }
 
     return true;
@@ -194,45 +181,45 @@ bool _phy_is_up(int32_t phy_state)
 
 static void MPU_Config(void)
 {
-    MPU_Region_InitTypeDef MPU_InitStruct;
+  MPU_Region_InitTypeDef MPU_InitStruct;
+  
+  /* Disable the MPU */
+  HAL_MPU_Disable();
 
-    /* Disable the MPU */
-    HAL_MPU_Disable();
+  /* Configure the MPU attributes as Device not cacheable 
+     for ETH DMA descriptors */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress = 0x30040000;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_1KB;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_BUFFERABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER0;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
 
-    /* Configure the MPU attributes as Device not cacheable
-       for ETH DMA descriptors */
-    MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-    MPU_InitStruct.BaseAddress = 0x30040000;
-    MPU_InitStruct.Size = MPU_REGION_SIZE_1KB;
-    MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-    MPU_InitStruct.IsBufferable = MPU_ACCESS_BUFFERABLE;
-    MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
-    MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-    MPU_InitStruct.Number = MPU_REGION_NUMBER0;
-    MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-    MPU_InitStruct.SubRegionDisable = 0x00;
-    MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+  
+  /* Configure the MPU attributes as Cacheable write through 
+     for LwIP RAM heap which contains the Tx buffers */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress = 0x30044000;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_16KB;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER1;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
 
-    HAL_MPU_ConfigRegion(&MPU_InitStruct);
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
-    /* Configure the MPU attributes as Cacheable write through
-       for LwIP RAM heap which contains the Tx buffers */
-    MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-    MPU_InitStruct.BaseAddress = 0x30044000;
-    MPU_InitStruct.Size = MPU_REGION_SIZE_16KB;
-    MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-    MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
-    MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-    MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-    MPU_InitStruct.Number = MPU_REGION_NUMBER1;
-    MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-    MPU_InitStruct.SubRegionDisable = 0x00;
-    MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-
-    HAL_MPU_ConfigRegion(&MPU_InitStruct);
-
-    /* Enable the MPU */
-    HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+  /* Enable the MPU */
+  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 }
 
 #endif
@@ -267,7 +254,7 @@ void ETH_IRQHandler(void)
 
 STM32_EMAC::STM32_EMAC()
     : thread(0)
-#ifdef ETH_IP_VERSION_V2
+#ifdef ETH_IP_VERSION_V2    
     , phy_status(0)
 #endif
 {
@@ -291,15 +278,13 @@ static osThreadId_t create_new_thread(const char *threadName, void (*thread)(voi
 bool STM32_EMAC::low_level_init_successful()
 #ifndef ETH_IP_VERSION_V2
 {
-    uint32_t PHY_ID;
-
     /* Init ETH */
     uint8_t MACAddr[6];
     EthHandle.Instance = ETH;
-    EthHandle.Init.AutoNegotiation = MBED_CONF_STM32_EMAC_ETH_PHY_AUTONEGOTIATION;
-    EthHandle.Init.Speed = MBED_CONF_STM32_EMAC_ETH_PHY_SPEED;
-    EthHandle.Init.DuplexMode = MBED_CONF_STM32_EMAC_ETH_PHY_DUPLEXMODE;
-    EthHandle.Init.PhyAddress = MBED_CONF_STM32_EMAC_ETH_PHY_ADDRESS;
+    EthHandle.Init.AutoNegotiation = ETH_AUTONEGOTIATION_ENABLE;
+    EthHandle.Init.Speed = ETH_SPEED_100M;
+    EthHandle.Init.DuplexMode = ETH_MODE_FULLDUPLEX;
+    EthHandle.Init.PhyAddress = ETH_ARCH_PHY_ADDRESS;
 #if (MBED_MAC_ADDRESS_SUM != MBED_MAC_ADDR_INTERFACE)
     MACAddr[0] = MBED_MAC_ADDR_0;
     MACAddr[1] = MBED_MAC_ADDR_1;
@@ -314,48 +299,20 @@ bool STM32_EMAC::low_level_init_successful()
     EthHandle.Init.RxMode = ETH_RXINTERRUPT_MODE;
     EthHandle.Init.ChecksumMode = ETH_CHECKSUM_BY_SOFTWARE;
     EthHandle.Init.MediaInterface = ETH_MEDIA_INTERFACE_RMII;
-    tr_info("PHY Addr %u AutoNegotiation %u", EthHandle.Init.PhyAddress, EthHandle.Init.AutoNegotiation);
-    tr_debug("MAC Addr %02x:%02x:%02x:%02x:%02x:%02x", MACAddr[0], MACAddr[1], MACAddr[2], MACAddr[3], MACAddr[4], MACAddr[5]);
-    tr_info("ETH buffers : %u Rx %u Tx", ETH_RXBUFNB, ETH_TXBUFNB);
-
-    if (HAL_ETH_Init(&EthHandle) != HAL_OK) {
-        tr_error("HAL_ETH_Init issue");
-        return false;
-    }
-
-    uint32_t TempRegisterValue;
-    if (HAL_ETH_ReadPHYRegister(&EthHandle, 2, &TempRegisterValue) != HAL_OK) {
-        tr_error("HAL_ETH_ReadPHYRegister 2 issue");
-    }
-    PHY_ID = (TempRegisterValue << 16);
-    if (HAL_ETH_ReadPHYRegister(&EthHandle, 3, &TempRegisterValue) != HAL_OK) {
-        tr_error("HAL_ETH_ReadPHYRegister 3 issue");
-    }
-    PHY_ID |= (TempRegisterValue & 0XFFF0);
-    tr_info("PHY ID %#X", PHY_ID);
+    HAL_ETH_Init(&EthHandle);
 
     /* Initialize Tx Descriptors list: Chain Mode */
-    if (HAL_ETH_DMATxDescListInit(&EthHandle, DMATxDscrTab, &Tx_Buff[0][0], ETH_TXBUFNB) != HAL_OK) {
-        tr_error("HAL_ETH_DMATxDescListInit issue");
-        return false;
-    }
+    HAL_ETH_DMATxDescListInit(&EthHandle, DMATxDscrTab, &Tx_Buff[0][0], ETH_TXBUFNB);
 
     /* Initialize Rx Descriptors list: Chain Mode  */
-    if (HAL_ETH_DMARxDescListInit(&EthHandle, DMARxDscrTab, &Rx_Buff[0][0], ETH_RXBUFNB) != HAL_OK) {
-        tr_error("HAL_ETH_DMARxDescListInit issue");
-        return false;
-    }
+    HAL_ETH_DMARxDescListInit(&EthHandle, DMARxDscrTab, &Rx_Buff[0][0], ETH_RXBUFNB);
 
     /* Configure MAC */
     _eth_config_mac(&EthHandle);
 
     /* Enable MAC and DMA transmission and reception */
-    if (HAL_ETH_Start(&EthHandle) != HAL_OK) {
-        tr_error("HAL_ETH_Start issue");
-        return false;
-    }
+    HAL_ETH_Start(&EthHandle);
 
-    tr_info("low_level_init_successful");
     return true;
 }
 #else // ETH_IP_VERSION_V2
@@ -383,10 +340,8 @@ bool STM32_EMAC::low_level_init_successful()
     EthHandle.Init.TxDesc = DMATxDscrTab;
     EthHandle.Init.RxBuffLen = 1524;
 
-    tr_debug("MAC Addr %02x:%02x:%02x:%02x:%02x:%02x", MACAddr[0], MACAddr[1], MACAddr[2], MACAddr[3], MACAddr[4], MACAddr[5]);
-    tr_info("ETH buffers : %u Rx %u Tx", ETH_RX_DESC_CNT, ETH_TX_DESC_CNT);
-
-    if (HAL_ETH_Init(&EthHandle) != HAL_OK) {
+    if (HAL_ETH_Init(&EthHandle) != HAL_OK)
+    {
         return false;
     }
 
@@ -395,11 +350,11 @@ bool STM32_EMAC::low_level_init_successful()
     TxConfig.ChecksumCtrl = ETH_CHECKSUM_IPHDR_PAYLOAD_INSERT_PHDR_CALC;
     TxConfig.CRCPadCtrl = ETH_CRC_PAD_INSERT;
 
-    for (idx = 0; idx < ETH_RX_DESC_CNT; idx++) {
+    for(idx = 0; idx < ETH_RX_DESC_CNT; idx++)
+    {
         HAL_ETH_DescAssignMemory(&EthHandle, idx, Rx_Buff[idx], NULL);
     }
 
-    tr_info("low_level_init_successful");
     return _phy_init();
 }
 #endif // ETH_IP_VERSION_V2
@@ -420,7 +375,7 @@ bool STM32_EMAC::low_level_init_successful()
 bool STM32_EMAC::link_out(emac_mem_buf_t *buf)
 #ifndef ETH_IP_VERSION_V2
 {
-    bool success = true;
+    bool success;
     emac_mem_buf_t *q;
     uint8_t *buffer = reinterpret_cast<uint8_t *>(EthHandle.TxDesc->Buffer1Addr);
     __IO ETH_DMADescTypeDef *DmaTxDesc;
@@ -474,10 +429,9 @@ bool STM32_EMAC::link_out(emac_mem_buf_t *buf)
     }
 
     /* Prepare transmit descriptors to give to DMA */
-    if (HAL_ETH_TransmitFrame(&EthHandle, framelength) != HAL_OK) {
-        tr_error("HAL_ETH_TransmitFrame issue");
-        success = false;
-    }
+    HAL_ETH_TransmitFrame(&EthHandle, framelength);
+
+    success = true;
 
 error:
 
@@ -510,12 +464,12 @@ error:
     /* Get exclusive access */
     TXLockMutex.lock();
 
-    memset(Txbuffer, 0, ETH_TX_DESC_CNT * sizeof(ETH_BufferTypeDef));
+    memset(Txbuffer, 0 , ETH_TX_DESC_CNT*sizeof(ETH_BufferTypeDef));
 
     /* copy frame from pbufs to driver buffers */
     for (q = p; q != NULL; q = q->next) {
         if (i >= ETH_TX_DESC_CNT) {
-            tr_error("Error : ETH_TX_DESC_CNT not sufficient");
+            printf("Error : ETH_TX_DESC_CNT not sufficient\n");
             goto error;
         }
 
@@ -523,11 +477,13 @@ error:
         Txbuffer[i].len = q->len;
         frameLength += q->len;
 
-        if (i > 0) {
+        if (i > 0)
+        {
             Txbuffer[i - 1].next = &Txbuffer[i];
         }
 
-        if (q->next == NULL) {
+        if (q->next == NULL)
+        {
             Txbuffer[i].next = NULL;
         }
 
@@ -538,17 +494,17 @@ error:
     TxConfig.TxBuffer = Txbuffer;
 
     status = HAL_ETH_Transmit(&EthHandle, &TxConfig, 50);
-    if (status == HAL_OK) {
+    if(status == HAL_OK){
         success = 1;
     } else {
-        tr_error("Error returned by HAL_ETH_Transmit (%d)", status);
+        printf("Error returned by HAL_ETH_Transmit (%d)\n", status);
         success = 0;
     }
 
 error:
 
     if (p->ref > 1) {
-        pbuf_free(p);
+      pbuf_free(p);
     }
 
     /* Restore access */
@@ -570,7 +526,7 @@ error:
 int STM32_EMAC::low_level_input(emac_mem_buf_t **buf)
 #ifndef ETH_IP_VERSION_V2
 {
-    uint32_t len = 0;
+    uint16_t len = 0;
     uint8_t *buffer;
     __IO ETH_DMADescTypeDef *dmarxdesc;
     uint32_t bufferoffset = 0;
@@ -580,7 +536,6 @@ int STM32_EMAC::low_level_input(emac_mem_buf_t **buf)
 
     /* get received frame */
     if (HAL_ETH_GetReceivedFrame_IT(&EthHandle) != HAL_OK) {
-        tr_debug("low_level_input no frame");
         return -1;
     }
 
@@ -591,8 +546,7 @@ int STM32_EMAC::low_level_input(emac_mem_buf_t **buf)
 
     dmarxdesc = EthHandle.RxFrameInfos.FSRxDesc;
 
-    if (len > 0 && len <= ETH_RX_BUF_SIZE) {
-        tr_debug("low_level_input len %u", len);
+    if (len > 0) {
         /* Allocate a memory buffer chain from buffer pool */
         *buf = memory_manager->alloc_pool(len, 0);
     }
@@ -649,9 +603,11 @@ int STM32_EMAC::low_level_input(emac_mem_buf_t **buf)
     ETH_BufferTypeDef RxBuff;
     uint32_t frameLength = 0;
 
-    if (HAL_ETH_GetRxDataBuffer(&EthHandle, &RxBuff) == HAL_OK) {
-        if (HAL_ETH_GetRxDataLength(&EthHandle, &frameLength) != HAL_OK) {
-            tr_error("Error: returned by HAL_ETH_GetRxDataLength");
+    if (HAL_ETH_GetRxDataBuffer(&EthHandle, &RxBuff) == HAL_OK)
+    {
+        if (HAL_ETH_GetRxDataLength(&EthHandle, &frameLength) != HAL_OK)
+        {
+            printf("Error: returned by HAL_ETH_GetRxDataLength\n");
             return -1;
         }
 
@@ -662,10 +618,13 @@ int STM32_EMAC::low_level_input(emac_mem_buf_t **buf)
         SCB_InvalidateDCache_by_Addr((uint32_t *)RxBuff.buffer, frameLength);
 
         *buf = pbuf_alloc(PBUF_RAW, frameLength, PBUF_POOL);
-        if (*buf) {
+        if (*buf)
+          {
             pbuf_take((struct pbuf *)*buf, RxBuff.buffer, frameLength);
-        }
-    } else {
+          }
+    }
+    else
+    {
         return -1;
     }
 
@@ -721,18 +680,14 @@ void STM32_EMAC::phy_task()
     uint32_t status;
 
     if (HAL_ETH_ReadPHYRegister(&EthHandle, PHY_BSR, &status) == HAL_OK) {
-        if ((emac_link_state_cb) && (status != 0xFFFF)) {
+        if (emac_link_state_cb) {
             if ((status & PHY_LINKED_STATUS) && !(phy_status & PHY_LINKED_STATUS)) {
-                tr_info("emac_link_state_cb set to true");
                 emac_link_state_cb(true);
             } else if (!(status & PHY_LINKED_STATUS) && (phy_status & PHY_LINKED_STATUS)) {
-                tr_info("emac_link_state_cb set to false");
                 emac_link_state_cb(false);
             }
         }
         phy_status = status;
-    } else {
-        tr_error("HAL_ETH_ReadPHYRegister issue");
     }
 
 }
@@ -743,23 +698,27 @@ void STM32_EMAC::phy_task()
     const bool is_up  = _phy_is_up(status);
     const bool was_up = _phy_is_up(old_status);
 
-    if (is_up && !was_up) {
+    if (is_up && !was_up)
+    {
         uint32_t duplex, speed;
         ETH_MACConfigTypeDef MACConf;
 
-        if (!_phy_get_duplex_and_speed(status, &speed, &duplex)) {
+        if (!_phy_get_duplex_and_speed(status, &speed, &duplex))
+        {
             // Default
             duplex = ETH_FULLDUPLEX_MODE;
             speed = ETH_SPEED_10M;
         }
 
         /* Get MAC Config MAC */
-        HAL_ETH_GetMACConfig(&EthHandle, &MACConf);
+        HAL_ETH_GetMACConfig(&EthHandle, &MACConf); 
         MACConf.DuplexMode = duplex;
         MACConf.Speed = speed;
         HAL_ETH_SetMACConfig(&EthHandle, &MACConf);
         HAL_ETH_Start_IT(&EthHandle);
-    } else if (was_up && !is_up) {
+    }
+    else if (was_up && !is_up)
+    {
         // Stop ETH
         disable_interrupts();
         HAL_ETH_Stop(&EthHandle);
@@ -769,10 +728,8 @@ void STM32_EMAC::phy_task()
     if (emac_link_state_cb) {
         if (is_up && !was_up) {
             emac_link_state_cb(true);
-            tr_info("emac_link_state_cb set to true");
         } else if (!is_up && was_up) {
             emac_link_state_cb(false);
-            tr_info("emac_link_state_cb set to false");
         }
     }
 
@@ -879,8 +836,6 @@ void mbed_default_mac_address(char *mac)
 
 bool STM32_EMAC::power_up()
 {
-    tr_info("power_up");
-
     sleep_manager_lock_deep_sleep();
 
     /* Initialize the hardware */
@@ -889,13 +844,13 @@ bool STM32_EMAC::power_up()
     }
 
     /* Worker thread */
-    thread = create_new_thread("stm32_emac_thread", &STM32_EMAC::thread_function, this, MBED_CONF_STM32_EMAC_THREAD_STACKSIZE, THREAD_PRIORITY, &thread_cb);
+    thread = create_new_thread("stm32_emac_thread", &STM32_EMAC::thread_function, this, THREAD_STACKSIZE, THREAD_PRIORITY, &thread_cb);
 
     phy_task_handle = mbed::mbed_event_queue()->call_every(PHY_TASK_PERIOD_MS, mbed::callback(this, &STM32_EMAC::phy_task));
 
 #if defined (STM32F767xx) || defined (STM32F769xx) || defined (STM32F777xx)\
       || defined (STM32F779xx)
-    rmii_watchdog_thread = create_new_thread("stm32_rmii_watchdog", &STM32_EMAC::rmii_watchdog_thread_function, this, 128, THREAD_PRIORITY, &rmii_watchdog_thread_cb);
+    rmii_watchdog_thread = create_new_thread("stm32_rmii_watchdog", &STM32_EMAC::rmii_watchdog_thread_function, this, THREAD_STACKSIZE, THREAD_PRIORITY, &rmii_watchdog_thread_cb);
 #endif
 
     /* Allow the PHY task to detect the initial link state and set up the proper flags */
@@ -964,8 +919,6 @@ void STM32_EMAC::set_all_multicast(bool all)
 
 void STM32_EMAC::power_down()
 {
-    tr_info("power_down");
-
     /* No-op at this stage */
     sleep_manager_unlock_deep_sleep();
 }
@@ -998,9 +951,9 @@ MBED_WEAK EMAC &EMAC::get_default_instance()
   * @retval 0 if OK, -1 if ERROR
   */
 static int32_t ETH_PHY_IO_Init(void)
-{
+{  
     /* We assume that MDIO GPIO configuration is already done
-        in the ETH_MspInit() else it should be done here
+        in the ETH_MspInit() else it should be done here 
     */
     STM32_EMAC &emac = STM32_EMAC::get_instance();
 
@@ -1015,22 +968,23 @@ static int32_t ETH_PHY_IO_Init(void)
   * @param  None
   * @retval 0 if OK, -1 if ERROR
   */
-static int32_t ETH_PHY_IO_DeInit(void)
+static int32_t ETH_PHY_IO_DeInit (void)
 {
-    return 0;
+  return 0;
 }
 
 /**
   * @brief  Read a PHY register through the MDIO interface.
   * @param  DevAddr: PHY port address
   * @param  RegAddr: PHY register address
-  * @param  pRegVal: pointer to hold the register value
+  * @param  pRegVal: pointer to hold the register value 
   * @retval 0 if OK -1 if Error
   */
 static int32_t ETH_PHY_IO_ReadReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t *pRegVal)
 {
     STM32_EMAC &emac = STM32_EMAC::get_instance();
-    if (HAL_ETH_ReadPHYRegister(&emac.EthHandle, DevAddr, RegAddr, pRegVal) != HAL_OK) {
+    if(HAL_ETH_ReadPHYRegister(&emac.EthHandle, DevAddr, RegAddr, pRegVal) != HAL_OK)
+    {
         return -1;
     }
 
@@ -1041,13 +995,14 @@ static int32_t ETH_PHY_IO_ReadReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t *
   * @brief  Write a value to a PHY register through the MDIO interface.
   * @param  DevAddr: PHY port address
   * @param  RegAddr: PHY register address
-  * @param  RegVal: Value to be written
+  * @param  RegVal: Value to be written 
   * @retval 0 if OK -1 if Error
   */
 static int32_t ETH_PHY_IO_WriteReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t RegVal)
 {
     STM32_EMAC &emac = STM32_EMAC::get_instance();
-    if (HAL_ETH_WritePHYRegister(&emac.EthHandle, DevAddr, RegAddr, RegVal) != HAL_OK) {
+    if(HAL_ETH_WritePHYRegister(&emac.EthHandle, DevAddr, RegAddr, RegVal) != HAL_OK)
+    {
         return -1;
     }
 
@@ -1060,7 +1015,7 @@ static int32_t ETH_PHY_IO_WriteReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t 
   */
 static int32_t ETH_PHY_IO_GetTick(void)
 {
-    return HAL_GetTick();
+  return HAL_GetTick();
 }
 
 /**
@@ -1068,7 +1023,7 @@ static int32_t ETH_PHY_IO_GetTick(void)
   */
 void HAL_ETH_DMAErrorCallback(ETH_HandleTypeDef *heth)
 {
-    MBED_ERROR(MBED_MAKE_ERROR(MBED_MODULE_DRIVER_ETHERNET, EIO), \
+  MBED_ERROR(MBED_MAKE_ERROR(MBED_MODULE_DRIVER_ETHERNET, EIO), \
                "Error from ethernet HAL (HAL_ETH_DMAErrorCallback)\n");
 }
 
@@ -1077,7 +1032,7 @@ void HAL_ETH_DMAErrorCallback(ETH_HandleTypeDef *heth)
   */
 void HAL_ETH_MACErrorCallback(ETH_HandleTypeDef *heth)
 {
-    MBED_ERROR(MBED_MAKE_ERROR(MBED_MODULE_DRIVER_ETHERNET, EIO), \
+  MBED_ERROR(MBED_MAKE_ERROR(MBED_MODULE_DRIVER_ETHERNET, EIO), \
                "Error from ethernet HAL (HAL_ETH_MACErrorCallback)\n");
 }
 #endif // ETH_IP_VERSION_V2

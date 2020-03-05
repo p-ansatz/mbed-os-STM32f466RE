@@ -20,17 +20,6 @@
 
 #include <list>
 
-#define UART_NAME         "UART"
-#define UARTNOFC_NAME     "UART-no-FC"
-#define ANALOGOUT_NAME    "DAC"
-#define ANALOGIN_NAME     "ADC"
-#define PWM_NAME          "PWM"
-#define I2C_NAME          "I2C"
-#define SPI_NAME          "SPI"
-#define SPISLAVE_NAME     "SPISlave"
-#define GPIO_NAME         "GPIO"
-#define GPIO_IRQ_NAME     "GPIO_IRQ"
-
 // test function prototypes
 typedef void (*TF1)(PinName p0);
 typedef void (*TF2)(PinName p0, PinName p1);
@@ -111,45 +100,26 @@ void find_ports(std::list<PortType> &matched_ports, std::list<PortType> &not_mat
         const char *pin_type = PortType::PinMap::pin_type_names[i];
 
         // Loop through each pin of a given type
-        for (uint32_t j = 0; j <  FormFactorType::pins()->count; j++) {
+        for (; map->pin != NC; map++) {
             PortType port;
-
-            if (FormFactorType::pins()->pins[j] == NC) {
-                utest_printf("Skipping (NC pin) %s pin %s (%i)\r\n", pin_type,
-                             FormFactorType::pin_to_string(port.pins[i]), port.pins[i]);
+            // Set pin being tested
+            port.pins[i] = map->pin;
+            port.peripheral = map->peripheral;
+            // Only form factor pins can be tested
+            if (!pinmap_list_has_pin(FormFactorType::pins(), port.pins[i])) {
                 continue;
             }
-
-            // Set pin being tested
-            port.pins[i] = FormFactorType::pins()->pins[j];
-            port.peripheral = pinmap_find_peripheral(port.pins[i], map);
-
             // Don't test restricted pins
             if (pinmap_list_has_pin(FormFactorType::restricted_pins(), port.pins[i])) {
-                utest_printf("Skipping (restricted pin) %s pin %s (%i)\r\n", pin_type,
+                utest_printf("Skipping %s pin %s (%i)\r\n", pin_type,
                              FormFactorType::pin_to_string(port.pins[i]), port.pins[i]);
                 continue;
             }
-
-            if (!strcmp(PortType::PinMap::name, GPIO_IRQ_NAME) || !strcmp(PortType::PinMap::name, GPIO_NAME)) {
-                // Don't test restricted gpio pins
-                if (pinmap_list_has_pin(pinmap_gpio_restricted_pins(), port.pins[i])) {
-                    utest_printf("Skipping (restricted gpio pin) %s pin %s (%i)\r\n", pin_type,
-                                 FormFactorType::pin_to_string(port.pins[i]), port.pins[i]);
-                    continue;
-                }
+            if (pinmap_list_has_peripheral(pinmap_restricted_peripherals(), port.peripheral)) {
+                utest_printf("Skipping %s peripheral %i with pin %s (%i)\r\n", pin_type,
+                             port.peripheral, FormFactorType::pin_to_string(port.pins[i]), port.pins[i]);
+                continue;
             }
-
-#if DEVICE_SERIAL
-            if (!strcmp(PortType::PinMap::name, UART_NAME) || !strcmp(PortType::PinMap::name, UARTNOFC_NAME)) {
-                if (pinmap_list_has_peripheral(pinmap_uart_restricted_peripherals(), port.peripheral)) {
-                    utest_printf("Skipping (restricted uart peripheral) %s peripheral %i with pin %s (%i)\r\n", pin_type,
-                                 port.peripheral, FormFactorType::pin_to_string(port.pins[i]), port.pins[i]);
-                    continue;
-                }
-            }
-#endif
-
             // skipp pin searching if single pin port type
             if (PortType::pin_count > 1) {
                 find_port_pins<PortType, FormFactorType>(port);
@@ -321,10 +291,6 @@ void all_peripherals()
 template<typename PortType, typename FormFactorType, typename PortType::TestFunctionType f>
 void one_peripheral()
 {
-#ifdef FPGA_FORCE_ALL_PORTS
-    utest_printf("*** FPGA_FORCE_ALL_PORTS ***\n");
-    all_ports<PortType, FormFactorType, f>();
-#else
     std::list<PortType> matched_ports, not_matched_ports;
     find_ports<PortType, FormFactorType>(matched_ports, not_matched_ports);
 
@@ -334,7 +300,6 @@ void one_peripheral()
     } else {
         test_peripheral<PortType, typename PortType::TestFunctionType, f>(matched_ports.front());
     }
-#endif
 }
 
 template <uint32_t N, typename PinMapType, typename FormFactorType, typename TestFunctionType>
@@ -472,7 +437,7 @@ struct GPIOMaps {
 };
 const PinMap *GPIOMaps::maps[] = { gpio_pinmap() };
 const char *const GPIOMaps::pin_type_names[] = { "IO" };
-const char *const GPIOMaps::name = GPIO_NAME;
+const char *const GPIOMaps::name = "GPIO";
 typedef Port<1, GPIOMaps, DefaultFormFactor, TF1> GPIOPort;
 
 #if DEVICE_INTERRUPTIN
@@ -484,7 +449,7 @@ struct GPIOIRQMaps {
 };
 const PinMap *GPIOIRQMaps::maps[] = { gpio_irq_pinmap() };
 const char *const GPIOIRQMaps::pin_type_names[] = { "IRQ_IN" };
-const char *const GPIOIRQMaps::name = GPIO_IRQ_NAME;
+const char *const GPIOIRQMaps::name = "GPIO_IRQ";
 typedef Port<1, GPIOIRQMaps, DefaultFormFactor, TF1> GPIOIRQPort;
 #endif
 
@@ -497,7 +462,7 @@ struct SPIMaps {
 };
 const PinMap *SPIMaps::maps[] = { spi_master_mosi_pinmap(), spi_master_miso_pinmap(), spi_master_clk_pinmap(), spi_master_cs_pinmap() };
 const char *const SPIMaps::pin_type_names[] = { "MOSI", "MISO", "SCLK", "SSEL" };
-const char *const SPIMaps::name = SPI_NAME;
+const char *const SPIMaps::name = "SPI";
 typedef Port<4, SPIMaps, DefaultFormFactor, TF4> SPIPort;
 
 struct SPINoCSMaps {
@@ -507,7 +472,7 @@ struct SPINoCSMaps {
 };
 const PinMap *SPINoCSMaps::maps[] = { spi_master_mosi_pinmap(), spi_master_miso_pinmap(), spi_master_clk_pinmap()};
 const char *const SPINoCSMaps::pin_type_names[] = { "MOSI", "MISO", "SCLK" };
-const char *const SPINoCSMaps::name = SPI_NAME;
+const char *const SPINoCSMaps::name = "SPI";
 typedef Port<3, SPINoCSMaps, DefaultFormFactor, TF3> SPINoCSPort;
 
 struct SPISlaveMaps {
@@ -517,7 +482,7 @@ struct SPISlaveMaps {
 };
 const PinMap *SPISlaveMaps::maps[] = { spi_slave_mosi_pinmap(), spi_slave_miso_pinmap(), spi_slave_clk_pinmap(), spi_slave_cs_pinmap() };
 const char *const SPISlaveMaps::pin_type_names[] = { "MOSI", "MISO", "SCLK", "SSEL" };
-const char *const SPISlaveMaps::name = SPISLAVE_NAME;
+const char *const SPISlaveMaps::name = "SPISlave";
 typedef Port<4, SPISlaveMaps, DefaultFormFactor, TF4> SPISlavePort;
 #endif
 
@@ -530,7 +495,7 @@ struct I2CMaps {
 };
 const PinMap *I2CMaps::maps[] = { i2c_master_sda_pinmap(), i2c_master_scl_pinmap() };
 const char *const I2CMaps::pin_type_names[] = { "SDA", "SCL" };
-const char *const I2CMaps::name = I2C_NAME;
+const char *const I2CMaps::name = "I2C";
 typedef Port<2, I2CMaps, DefaultFormFactor, TF2> I2CPort;
 #endif
 
@@ -543,7 +508,7 @@ struct PWMMaps {
 };
 const PinMap *PWMMaps::maps[] = { pwmout_pinmap() };
 const char *const PWMMaps::pin_type_names[] = { "PWM_OUT" };
-const char *const PWMMaps::name = PWM_NAME;
+const char *const PWMMaps::name = "PWM";
 typedef Port<1, PWMMaps, DefaultFormFactor, TF1> PWMPort;
 #endif
 
@@ -556,7 +521,7 @@ struct AnaloginMaps {
 };
 const PinMap *AnaloginMaps::maps[] = { analogin_pinmap() };
 const char *const AnaloginMaps::pin_type_names[] = { "ADC_IN" };
-const char *const AnaloginMaps::name = ANALOGIN_NAME;
+const char *const AnaloginMaps::name = "ADC";
 typedef Port<1, AnaloginMaps, DefaultFormFactor, TF1> AnaloginPort;
 #endif
 
@@ -569,13 +534,12 @@ struct AnalogoutMaps {
 };
 const PinMap *AnalogoutMaps::maps[] = { analogout_pinmap() };
 const char *const AnalogoutMaps::pin_type_names[] = { "DAC_OUT" };
-const char *const AnalogoutMaps::name = ANALOGOUT_NAME;
+const char *const AnalogoutMaps::name = "DAC";
 typedef Port<1, AnalogoutMaps, DefaultFormFactor, TF1> AnalogoutPort;
 #endif
 
 #if DEVICE_SERIAL
 #if DEVICE_SERIAL_FC
-#include "hal/serial_api.h"
 struct UARTMaps {
     static const PinMap *maps[];
     static const char *const pin_type_names[];
@@ -583,7 +547,7 @@ struct UARTMaps {
 };
 const PinMap *UARTMaps::maps[] = { serial_tx_pinmap(), serial_rx_pinmap(), serial_cts_pinmap(), serial_rts_pinmap() };
 const char *const UARTMaps::pin_type_names[] = { "TX", "RX", "CLS", "RTS" };
-const char *const UARTMaps::name = UART_NAME;
+const char *const UARTMaps::name = "UART";
 typedef Port<4, UARTMaps, DefaultFormFactor, TF4> UARTPort;
 #endif
 
@@ -594,7 +558,8 @@ struct UARTNoFCMaps {
 };
 const PinMap *UARTNoFCMaps::maps[] = { serial_tx_pinmap(), serial_rx_pinmap() };
 const char *const UARTNoFCMaps::pin_type_names[] = { "TX", "RX" };
-const char *const UARTNoFCMaps::name = UARTNOFC_NAME;
+const char *const UARTNoFCMaps::name = "UART-no-FC";
 typedef Port<2, UARTNoFCMaps, DefaultFormFactor, TF2> UARTNoFCPort;
 #endif
+
 #endif

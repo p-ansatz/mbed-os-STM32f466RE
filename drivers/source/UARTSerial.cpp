@@ -67,7 +67,7 @@ void UARTSerial::set_baud(int baud)
 void UARTSerial::set_data_carrier_detect(PinName dcd_pin, bool active_high)
 {
     delete _dcd_irq;
-    _dcd_irq = nullptr;
+    _dcd_irq = NULL;
 
     if (dcd_pin != NC) {
         _dcd_irq = new InterruptIn(dcd_pin);
@@ -361,7 +361,7 @@ void UARTSerial::enable_rx_irq()
 
 void UARTSerial::disable_rx_irq()
 {
-    SerialBase::attach(nullptr, RxIrq);
+    SerialBase::attach(NULL, RxIrq);
     _rx_irq_enabled = false;
 }
 
@@ -373,7 +373,7 @@ void UARTSerial::enable_tx_irq()
 
 void UARTSerial::disable_tx_irq()
 {
-    SerialBase::attach(nullptr, TxIrq);
+    SerialBase::attach(NULL, TxIrq);
     _tx_irq_enabled = false;
 }
 

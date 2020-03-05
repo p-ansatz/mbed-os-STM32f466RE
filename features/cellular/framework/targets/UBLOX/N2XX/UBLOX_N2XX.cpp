@@ -20,7 +20,7 @@
 using namespace mbed;
 using namespace events;
 
-static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
+static const intptr_t cellular_properties[AT_CellularBase::PROPERTY_MAX] = {
     AT_CellularNetwork::RegistrationModeLAC,        // C_EREG
     AT_CellularNetwork::RegistrationModeDisable,    // C_GREG
     AT_CellularNetwork::RegistrationModeDisable,    // C_REG
@@ -34,40 +34,28 @@ static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
     1,  // PROPERTY_IPV4_STACK
     0,  // PROPERTY_IPV6_STACK
     0,  // PROPERTY_IPV4V6_STACK
-    1,  // PROPERTY_NON_IP_PDP_TYPE
-    0,  // PROPERTY_AT_CGEREP
-    1,  // PROPERTY_AT_COPS_FALLBACK_AUTO
-    7,  // PROPERTY_SOCKET_COUNT
-    0,  // PROPERTY_IP_TCP
-    1,  // PROPERTY_IP_UDP
-    0,  // PROPERTY_AT_SEND_DELAY
 };
 
 UBLOX_N2XX::UBLOX_N2XX(FileHandle *fh): AT_CellularDevice(fh)
 {
-    set_cellular_properties(cellular_properties);
+    AT_CellularBase::set_cellular_properties(cellular_properties);
     memset(simstr, 0, sizeof(simstr));
 }
 
 void UBLOX_N2XX::set_at_urcs_impl()
 {
-    _at.set_urc_handler("+NPIN:", mbed::Callback<void()>(this, &UBLOX_N2XX::NPIN_URC));
+    _at->set_urc_handler("+NPIN:", mbed::Callback<void()>(this, &UBLOX_N2XX::NPIN_URC));
 }
 
 UBLOX_N2XX::~UBLOX_N2XX()
 {
-    _at.set_urc_handler("+NPIN:", nullptr);
+    _at->set_urc_handler("+NPIN:", NULL);
 }
 
 // Callback for Sim Pin.
 void UBLOX_N2XX::NPIN_URC()
 {
-    _at.read_string(simstr, sizeof(simstr));
-}
-
-AT_CellularNetwork *UBLOX_N2XX::open_network_impl(ATHandler &at)
-{
-    return new UBLOX_N2XX_CellularNetwork(at, *this);
+    _at->read_string(simstr, sizeof(simstr));
 }
 
 AT_CellularContext *UBLOX_N2XX::create_context_impl(ATHandler &at, const char *apn, bool cp_req, bool nonip_req)
@@ -78,7 +66,7 @@ AT_CellularContext *UBLOX_N2XX::create_context_impl(ATHandler &at, const char *a
 #if MBED_CONF_CELLULAR_USE_SMS
 AT_CellularSMS *UBLOX_N2XX::open_sms_impl(ATHandler &at)
 {
-    return new UBLOX_N2XX_CellularSMS(at, *this);
+    return new UBLOX_N2XX_CellularSMS(at);
 }
 #endif // MBED_CONF_CELLULAR_USE_SMS
 
@@ -86,27 +74,27 @@ nsapi_error_t UBLOX_N2XX::init()
 {
     setup_at_handler();
 
-    _at.lock();
-    _at.flush();
-    _at.at_cmd_discard("", "");
+    _at->lock();
+    _at->flush();
+    _at->at_cmd_discard("", "");
 
-    _at.at_cmd_discard("+CMEE", "=1"); // verbose responses
+    _at->at_cmd_discard("+CMEE", "=1"); // verbose responses
 
 #ifdef MBED_CONF_NSAPI_DEFAULT_CELLULAR_SIM_PIN
     set_pin(MBED_CONF_NSAPI_DEFAULT_CELLULAR_SIM_PIN);
 #endif
-    return _at.unlock_return_error();
+    return _at->unlock_return_error();
 }
 
 nsapi_error_t UBLOX_N2XX::get_sim_state(SimState &state)
 {
     nsapi_error_t error = NSAPI_ERROR_DEVICE_ERROR;
 
-    _at.lock();
-    _at.flush();
+    _at->lock();
+    _at->flush();
     //Special case: Command put in cmd_chr to make a 1 liner
-    error = _at.at_cmd_str("", "+CFUN=1", simstr, sizeof(simstr));
-    _at.unlock();
+    _at->at_cmd_str("", "+CFUN=1", simstr, sizeof(simstr));
+    error = _at->unlock_return_error();
 
     int len = strlen(simstr);
     if (len > 0 || error == NSAPI_ERROR_OK) {
@@ -157,14 +145,14 @@ nsapi_error_t UBLOX_N2XX::set_pin(const char *sim_pin)
         return NSAPI_ERROR_PARAMETER;
     }
 
-    return _at.at_cmd_discard("+NPIN", "=", "%d%s", 0, sim_pin);
+    return _at->at_cmd_discard("+NPIN", "=", "%d%s", 0, sim_pin);
 }
 
 #if MBED_CONF_UBLOX_N2XX_PROVIDE_DEFAULT
-#include "drivers/BufferedSerial.h"
+#include "UARTSerial.h"
 CellularDevice *CellularDevice::get_default_instance()
 {
-    static BufferedSerial serial(MBED_CONF_UBLOX_N2XX_TX, MBED_CONF_UBLOX_N2XX_RX, MBED_CONF_UBLOX_N2XX_BAUDRATE);
+    static UARTSerial serial(MBED_CONF_UBLOX_N2XX_TX, MBED_CONF_UBLOX_N2XX_RX, MBED_CONF_UBLOX_N2XX_BAUDRATE);
 #if defined (MBED_CONF_UBLOX_N2XX_RTS) && defined(MBED_CONF_UBLOX_N2XX_CTS)
     tr_debug("UBLOX_N2XX flow control: RTS %d CTS %d", MBED_CONF_UBLOX_N2XX_RTS, MBED_CONF_UBLOX_N2XX_CTS);
     serial.set_flow_control(SerialBase::RTSCTS, MBED_CONF_UBLOX_N2XX_RTS, MBED_CONF_UBLOX_N2XX_CTS);

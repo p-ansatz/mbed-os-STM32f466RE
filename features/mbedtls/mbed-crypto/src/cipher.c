@@ -34,7 +34,6 @@
 #include "mbedtls/cipher.h"
 #include "mbedtls/cipher_internal.h"
 #include "mbedtls/platform_util.h"
-#include "mbedtls/error.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -505,7 +504,7 @@ int mbedtls_cipher_update_ad( mbedtls_cipher_context_t *ctx,
 int mbedtls_cipher_update( mbedtls_cipher_context_t *ctx, const unsigned char *input,
                    size_t ilen, unsigned char *output, size_t *olen )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t block_size;
 
     CIPHER_VALIDATE_RET( ctx != NULL );
@@ -1135,7 +1134,7 @@ int mbedtls_cipher_check_tag( mbedtls_cipher_context_t *ctx,
                       const unsigned char *tag, size_t tag_len )
 {
     unsigned char check_tag[16];
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
 
     CIPHER_VALIDATE_RET( ctx != NULL );
     CIPHER_VALIDATE_RET( tag_len == 0 || tag != NULL );
@@ -1212,7 +1211,7 @@ int mbedtls_cipher_crypt( mbedtls_cipher_context_t *ctx,
                   const unsigned char *input, size_t ilen,
                   unsigned char *output, size_t *olen )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t finish_olen;
 
     CIPHER_VALIDATE_RET( ctx != NULL );
@@ -1456,7 +1455,7 @@ int mbedtls_cipher_auth_decrypt( mbedtls_cipher_context_t *ctx,
 #if defined(MBEDTLS_GCM_C)
     if( MBEDTLS_MODE_GCM == ctx->cipher_info->mode )
     {
-        int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+        int ret;
 
         *olen = ilen;
         ret = mbedtls_gcm_auth_decrypt( ctx->cipher_ctx, ilen,
@@ -1472,7 +1471,7 @@ int mbedtls_cipher_auth_decrypt( mbedtls_cipher_context_t *ctx,
 #if defined(MBEDTLS_CCM_C)
     if( MBEDTLS_MODE_CCM == ctx->cipher_info->mode )
     {
-        int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+        int ret;
 
         *olen = ilen;
         ret = mbedtls_ccm_auth_decrypt( ctx->cipher_ctx, ilen,
@@ -1488,7 +1487,7 @@ int mbedtls_cipher_auth_decrypt( mbedtls_cipher_context_t *ctx,
 #if defined(MBEDTLS_CHACHAPOLY_C)
     if ( MBEDTLS_CIPHER_CHACHA20_POLY1305 == ctx->cipher_info->type )
     {
-        int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+        int ret;
 
         /* ChachaPoly has fixed length nonce and MAC (tag) */
         if ( ( iv_len != ctx->cipher_info->iv_size ) ||

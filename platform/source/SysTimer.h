@@ -57,7 +57,7 @@ public:
 
     SysTimer(const ticker_data_t *data);
 
-    virtual ~SysTimer();
+    ~SysTimer();
 
     /**
      * Get the interrupt number for the tick
@@ -225,7 +225,6 @@ protected:
     uint64_t _elapsed_ticks() const;
     static void _set_irq_pending();
     static void _clear_irq_pending();
-    const us_timestamp_t _epoch;
     us_timestamp_t _time_us;
     uint64_t _tick;
     uint8_t _unacknowledged_ticks;

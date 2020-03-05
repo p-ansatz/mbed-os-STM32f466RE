@@ -45,7 +45,7 @@ using namespace rtos;
 #define MBED_CONF_QUECTEL_BG96_POLARITY    1 // active high
 #endif
 
-static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
+static const intptr_t cellular_properties[AT_CellularBase::PROPERTY_MAX] = {
     AT_CellularNetwork::RegistrationModeLAC,    // C_EREG
     AT_CellularNetwork::RegistrationModeLAC,    // C_GREG
     AT_CellularNetwork::RegistrationModeLAC,    // C_REG
@@ -60,12 +60,7 @@ static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
     1,  // PROPERTY_IPV6_STACK
     0,  // PROPERTY_IPV4V6_STACK
     1,  // PROPERTY_NON_IP_PDP_TYPE
-    1,  // PROPERTY_AT_CGEREP,
-    1,  // PROPERTY_AT_COPS_FALLBACK_AUTO
-    12, // PROPERTY_SOCKET_COUNT
-    1,  // PROPERTY_IP_TCP
-    1,  // PROPERTY_IP_UDP
-    0,  // PROPERTY_AT_SEND_DELAY
+    1,  // PROPERTY_AT_CGEREP
 };
 
 QUECTEL_BG96::QUECTEL_BG96(FileHandle *fh, PinName pwr, bool active_high, PinName rst)
@@ -74,17 +69,17 @@ QUECTEL_BG96::QUECTEL_BG96(FileHandle *fh, PinName pwr, bool active_high, PinNam
       _pwr(pwr, !_active_high),
       _rst(rst, !_active_high)
 {
-    set_cellular_properties(cellular_properties);
+    AT_CellularBase::set_cellular_properties(cellular_properties);
 }
 
 void QUECTEL_BG96::set_at_urcs_impl()
 {
-    _at.set_urc_handler("+QIURC: \"pdpde",  mbed::Callback<void()>(this, &QUECTEL_BG96::urc_pdpdeact));
+    _at->set_urc_handler("+QIURC: \"pdpde",  mbed::Callback<void()>(this, &QUECTEL_BG96::urc_pdpdeact));
 }
 
 AT_CellularNetwork *QUECTEL_BG96::open_network_impl(ATHandler &at)
 {
-    return new QUECTEL_BG96_CellularNetwork(at, *this);
+    return new QUECTEL_BG96_CellularNetwork(at);
 }
 
 AT_CellularContext *QUECTEL_BG96::create_context_impl(ATHandler &at, const char *apn, bool cp_req, bool nonip_req)
@@ -94,12 +89,12 @@ AT_CellularContext *QUECTEL_BG96::create_context_impl(ATHandler &at, const char 
 
 AT_CellularInformation *QUECTEL_BG96::open_information_impl(ATHandler &at)
 {
-    return new QUECTEL_BG96_CellularInformation(at, *this);
+    return new QUECTEL_BG96_CellularInformation(at);
 }
 
 void QUECTEL_BG96::set_ready_cb(Callback<void()> callback)
 {
-    _at.set_urc_handler(DEVICE_READY_URC, callback);
+    _at->set_urc_handler(DEVICE_READY_URC, callback);
 }
 
 nsapi_error_t QUECTEL_BG96::soft_power_on()
@@ -117,7 +112,7 @@ nsapi_error_t QUECTEL_BG96::soft_power_on()
     }
 
 #if defined (MBED_CONF_QUECTEL_BG96_RTS) && defined(MBED_CONF_QUECTEL_BG96_CTS)
-    if (_at.at_cmd_discard("+IFC", "=", "%d%d", 2, 2) != NSAPI_ERROR_OK) {
+    if (_at->at_cmd_discard("+IFC", "=", "%d%d", 2, 2) != NSAPI_ERROR_OK) {
         tr_warn("Set flow control failed");
         return NSAPI_ERROR_DEVICE_ERROR;
     }
@@ -128,23 +123,23 @@ nsapi_error_t QUECTEL_BG96::soft_power_on()
 
 nsapi_error_t QUECTEL_BG96::soft_power_off()
 {
-    _at.lock();
-    _at.cmd_start("AT+QPOWD");
-    _at.cmd_stop_read_resp();
-    if (_at.get_last_error() != NSAPI_ERROR_OK) {
+    _at->lock();
+    _at->cmd_start("AT+QPOWD");
+    _at->cmd_stop_read_resp();
+    if (_at->get_last_error() != NSAPI_ERROR_OK) {
         tr_warn("Force modem off");
         if (_pwr.is_connected()) {
             press_button(_pwr, 650); // BG96_Hardware_Design_V1.1: Power off signal at least 650 ms
         }
     }
-    return _at.unlock_return_error();
+    return _at->unlock_return_error();
 }
 
 #if MBED_CONF_QUECTEL_BG96_PROVIDE_DEFAULT
-#include "drivers/BufferedSerial.h"
+#include "UARTSerial.h"
 CellularDevice *CellularDevice::get_default_instance()
 {
-    static BufferedSerial serial(MBED_CONF_QUECTEL_BG96_TX, MBED_CONF_QUECTEL_BG96_RX, MBED_CONF_QUECTEL_BG96_BAUDRATE);
+    static UARTSerial serial(MBED_CONF_QUECTEL_BG96_TX, MBED_CONF_QUECTEL_BG96_RX, MBED_CONF_QUECTEL_BG96_BAUDRATE);
 #if defined (MBED_CONF_QUECTEL_BG96_RTS) && defined(MBED_CONF_QUECTEL_BG96_CTS)
     tr_debug("QUECTEL_BG96 flow control: RTS %d CTS %d", MBED_CONF_QUECTEL_BG96_RTS, MBED_CONF_QUECTEL_BG96_CTS);
     serial.set_flow_control(SerialBase::RTSCTS, MBED_CONF_QUECTEL_BG96_RTS, MBED_CONF_QUECTEL_BG96_CTS);
@@ -159,10 +154,10 @@ CellularDevice *CellularDevice::get_default_instance()
 
 void QUECTEL_BG96::urc_pdpdeact()
 {
-    _at.lock();
-    _at.skip_param();
-    int cid = _at.read_int();
-    const nsapi_error_t err = _at.unlock_return_error();
+    _at->lock();
+    _at->skip_param();
+    int cid = _at->read_int();
+    const nsapi_error_t err = _at->unlock_return_error();
 
     if (err != NSAPI_ERROR_OK) {
         return;
@@ -183,14 +178,14 @@ void QUECTEL_BG96::press_button(DigitalOut &button, uint32_t timeout)
 bool QUECTEL_BG96::wake_up(bool reset)
 {
     // check if modem is already ready
-    _at.lock();
-    _at.flush();
-    _at.set_at_timeout(30);
-    _at.cmd_start("AT");
-    _at.cmd_stop_read_resp();
-    nsapi_error_t err = _at.get_last_error();
-    _at.restore_at_timeout();
-    _at.unlock();
+    _at->lock();
+    _at->flush();
+    _at->set_at_timeout(30);
+    _at->cmd_start("AT");
+    _at->cmd_stop_read_resp();
+    nsapi_error_t err = _at->get_last_error();
+    _at->restore_at_timeout();
+    _at->unlock();
     // modem is not responding, power it on
     if (err != NSAPI_ERROR_OK) {
         if (!reset) {
@@ -201,20 +196,20 @@ bool QUECTEL_BG96::wake_up(bool reset)
             tr_warn("Reset modem");
             press_button(_rst, 150); // BG96_Hardware_Design_V1.1 requires RESET_N timeout at least 150 ms
         }
-        _at.lock();
+        _at->lock();
         // According to BG96_Hardware_Design_V1.1 USB is active after 4.2s, but it seems to take over 5s
-        _at.set_at_timeout(6000);
-        _at.resp_start();
-        _at.set_stop_tag("RDY");
-        bool rdy = _at.consume_to_stop_tag();
-        _at.set_stop_tag(OK);
-        _at.restore_at_timeout();
-        _at.unlock();
+        _at->set_at_timeout(6000);
+        _at->resp_start();
+        _at->set_stop_tag("RDY");
+        bool rdy = _at->consume_to_stop_tag();
+        _at->set_stop_tag(OK);
+        _at->restore_at_timeout();
+        _at->unlock();
         if (!rdy) {
             return false;
         }
     }
 
     // sync to check that AT is really responsive and to clear garbage
-    return _at.sync(500);
+    return _at->sync(500);
 }

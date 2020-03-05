@@ -2,17 +2,12 @@
     "base": {
         "supported_toolchains": ["GCC_ARM"],
         "extra_labels": [],
-        "c_lib": "std",
+        "default_lib": "std",
         "core": "Cortex-M0",
         "config": {
             "par1": "v_par1_base",
             "par2": "v_par2_base",
             "par3": "v_par3_base"
-        },
-        "supported_c_libs": {
-                "arm": ["std"],
-                "gcc_arm": ["std", "small"],
-                "iar": ["std"]
         }
     },
     "b1": {

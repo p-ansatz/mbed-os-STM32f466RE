@@ -138,11 +138,8 @@ int ChainingBlockDevice::sync()
 
 int ChainingBlockDevice::read(void *b, bd_addr_t addr, bd_size_t size)
 {
+    MBED_ASSERT(is_valid_read(addr, size));
     if (!_is_initialized) {
-        return BD_ERROR_DEVICE_ERROR;
-    }
-
-    if (!is_valid_read(addr, size)) {
         return BD_ERROR_DEVICE_ERROR;
     }
 
@@ -176,11 +173,8 @@ int ChainingBlockDevice::read(void *b, bd_addr_t addr, bd_size_t size)
 
 int ChainingBlockDevice::program(const void *b, bd_addr_t addr, bd_size_t size)
 {
+    MBED_ASSERT(is_valid_program(addr, size));
     if (!_is_initialized) {
-        return BD_ERROR_DEVICE_ERROR;
-    }
-
-    if (!is_valid_program(addr, size)) {
         return BD_ERROR_DEVICE_ERROR;
     }
 
@@ -214,11 +208,8 @@ int ChainingBlockDevice::program(const void *b, bd_addr_t addr, bd_size_t size)
 
 int ChainingBlockDevice::erase(bd_addr_t addr, bd_size_t size)
 {
+    MBED_ASSERT(is_valid_erase(addr, size));
     if (!_is_initialized) {
-        return BD_ERROR_DEVICE_ERROR;
-    }
-
-    if (!is_valid_erase(addr, size)) {
         return BD_ERROR_DEVICE_ERROR;
     }
 

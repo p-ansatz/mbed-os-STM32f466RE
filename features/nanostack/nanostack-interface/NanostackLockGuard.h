@@ -37,8 +37,9 @@ public:
         eventOS_scheduler_mutex_release();
     }
 
-    NanostackLockGuard(const NanostackLockGuard &) = delete;
-    NanostackLockGuard &operator=(const NanostackLockGuard &) = delete;
+private:
+    NanostackLockGuard(const NanostackLockGuard &);
+    NanostackLockGuard &operator=(const NanostackLockGuard &);
 };
 
 #endif /* NANOSTACK_LOCK_GUARD_H_ */

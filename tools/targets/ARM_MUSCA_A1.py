@@ -54,14 +54,11 @@ def musca_tfm_bin(t_self, non_secure_bin, secure_bin):
     #2. Run imgtool to sign the concatenated binary
     sign_args = Namespace(
         layout=flash_layout,
-        key=path_join(SCRIPT_DIR, 'musca_a1-root-rsa-3072.pem'),
-        public_key_format=None,
+        key=path_join(SCRIPT_DIR, 'musca_a1-root-rsa-2048.pem'),
         align=1,
-        dependencies=None,
         version=version.decode_version('1.0'),
         header_size=0x400,
         pad=0x100000,
-        security_counter=None,
         rsa_pkcs1_15=False,
         included_header=False,
         infile=concatenated_bin,

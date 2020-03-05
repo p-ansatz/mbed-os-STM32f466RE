@@ -52,8 +52,7 @@ SysTimer<US_IN_TICK, IRQ>::SysTimer() :
 #else
     TimerEvent(get_us_ticker_data()),
 #endif
-    _epoch(ticker_read_us(_ticker_data)),
-    _time_us(_epoch),
+    _time_us(ticker_read_us(_ticker_data)),
     _tick(0),
     _unacknowledged_ticks(0),
     _wake_time_set(false),
@@ -67,8 +66,7 @@ SysTimer<US_IN_TICK, IRQ>::SysTimer() :
 template<uint32_t US_IN_TICK, bool IRQ>
 SysTimer<US_IN_TICK, IRQ>::SysTimer(const ticker_data_t *data) :
     TimerEvent(data),
-    _epoch(ticker_read_us(_ticker_data)),
-    _time_us(_epoch),
+    _time_us(ticker_read_us(_ticker_data)),
     _tick(0),
     _unacknowledged_ticks(0),
     _wake_time_set(false),
@@ -106,7 +104,7 @@ void SysTimer<US_IN_TICK, IRQ>::set_wake_time(uint64_t at)
     }
 
     uint64_t ticks_to_sleep = at - _tick;
-    uint64_t wake_time = _epoch + at * US_IN_TICK;
+    uint64_t wake_time = at * US_IN_TICK;
 
     /* Set this first, before attaching the interrupt that can unset it */
     _wake_time_set = true;

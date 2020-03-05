@@ -24,8 +24,7 @@
 
 using namespace mbed;
 
-QUECTEL_M26_CellularStack::QUECTEL_M26_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type, AT_CellularDevice &device) :
-    AT_CellularStack(atHandler, cid, stack_type, device)
+QUECTEL_M26_CellularStack::QUECTEL_M26_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type) : AT_CellularStack(atHandler, cid, stack_type)
 {
     _at.set_urc_handler("+QIRDI:", Callback<void()>(this, &QUECTEL_M26_CellularStack::urc_qiurc));
 
@@ -39,14 +38,14 @@ QUECTEL_M26_CellularStack::QUECTEL_M26_CellularStack(ATHandler &atHandler, int c
 
 QUECTEL_M26_CellularStack::~QUECTEL_M26_CellularStack()
 {
-    _at.set_urc_handler("5, CLOSED", nullptr);
-    _at.set_urc_handler("4, CLOSED", nullptr);
-    _at.set_urc_handler("3, CLOSED", nullptr);
-    _at.set_urc_handler("2, CLOSED", nullptr);
-    _at.set_urc_handler("1, CLOSED", nullptr);
-    _at.set_urc_handler("0, CLOSED", nullptr);
+    _at.set_urc_handler("5, CLOSED", NULL);
+    _at.set_urc_handler("4, CLOSED", NULL);
+    _at.set_urc_handler("3, CLOSED", NULL);
+    _at.set_urc_handler("2, CLOSED", NULL);
+    _at.set_urc_handler("1, CLOSED", NULL);
+    _at.set_urc_handler("0, CLOSED", NULL);
 
-    _at.set_urc_handler("+QIRDI:", nullptr);
+    _at.set_urc_handler("+QIRDI:", NULL);
 }
 
 nsapi_error_t QUECTEL_M26_CellularStack::socket_listen(nsapi_socket_t handle, int backlog)
@@ -116,7 +115,7 @@ void QUECTEL_M26_CellularStack::urc_qiurc()
     (void) _at.skip_param(); /*<tlen>*/
     _at.unlock();
 
-    for (int i = 0; i < _device.get_property(AT_CellularDevice::PROPERTY_SOCKET_COUNT); i++) {
+    for (int i = 0; i < get_max_socket_count(); i++) {
         CellularSocket *sock = _socket[i];
         if (sock && sock->id == sock_id) {
             if (sock->_cb) {
@@ -215,6 +214,16 @@ nsapi_error_t QUECTEL_M26_CellularStack::socket_stack_init()
 
     tr_debug("QUECTEL_M26_CellularStack:%s:%u: SUCCESS ", __FUNCTION__, __LINE__);
     return NSAPI_ERROR_OK;
+}
+
+int QUECTEL_M26_CellularStack::get_max_socket_count()
+{
+    return M26_SOCKET_MAX;
+}
+
+bool QUECTEL_M26_CellularStack::is_protocol_supported(nsapi_protocol_t protocol)
+{
+    return (protocol == NSAPI_UDP || protocol == NSAPI_TCP);
 }
 
 nsapi_error_t QUECTEL_M26_CellularStack::socket_close_impl(int sock_id)
@@ -318,7 +327,7 @@ nsapi_error_t QUECTEL_M26_CellularStack::create_socket_impl(CellularSocket *sock
     int potential_sid = -1;
     int index = find_socket_index(socket);
 
-    for (int i = 0; i < _device.get_property(AT_CellularDevice::PROPERTY_SOCKET_COUNT); i++) {
+    for (int i = 0; i < get_max_socket_count(); i++) {
         CellularSocket *sock = _socket[i];
         if (sock && sock != socket && sock->id == index) {
             duplicate = true;

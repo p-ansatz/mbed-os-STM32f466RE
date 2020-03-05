@@ -1,7 +1,6 @@
 /*!
 * Copyright (c) 2015, Freescale Semiconductor, Inc.
 * All rights reserved.
-* SPDX-License-Identifier: BSD-3-Clause
 *
 * \file MCR20Drv.c
 *
@@ -46,7 +45,6 @@
 #if defined(MBED_CONF_NANOSTACK_CONFIGURATION) && DEVICE_SPI && DEVICE_INTERRUPTIN && defined(MBED_CONF_RTOS_PRESENT)
 
 #include "platform/mbed_critical.h"
-#include <string.h>
 
 /*****************************************************************************
 *                               PRIVATE VARIABLES                           *
@@ -167,7 +165,7 @@ void MCR20Drv_DirectAccessSPIMultiByteWrite
 {
     uint8_t txData;
 
-    if ((numOfBytes == 0) || (byteArray == NULL)) {
+    if ((numOfBytes == 0) || (byteArray == 0)) {
         return;
     }
 
@@ -232,7 +230,7 @@ void MCR20Drv_PB_SPIBurstWrite
 {
     uint8_t txData;
 
-    if ((numOfBytes == 0) || (byteArray == NULL)) {
+    if ((numOfBytes == 0) || (byteArray == 0)) {
         return;
     }
 
@@ -303,7 +301,7 @@ uint8_t MCR20Drv_DirectAccessSPIMultiByteRead
     uint8_t  txData;
     uint8_t  phyIRQSTS1;
 
-    if ((numOfBytes == 0) || (byteArray == NULL)) {
+    if ((numOfBytes == 0) || (byteArray == 0)) {
         return 0;
     }
 
@@ -340,7 +338,7 @@ uint8_t MCR20Drv_PB_SPIBurstRead
     uint8_t  txData;
     uint8_t  phyIRQSTS1;
 
-    if ((numOfBytes == 0) || (byteArray == NULL)) {
+    if ((numOfBytes == 0) || (byteArray == 0)) {
         return 0;
     }
 
@@ -408,7 +406,7 @@ void MCR20Drv_IndirectAccessSPIMultiByteWrite
 {
     uint16_t  txData;
 
-    if ((numOfBytes == 0) || (byteArray == NULL)) {
+    if ((numOfBytes == 0) || (byteArray == 0)) {
         return;
     }
 
@@ -475,7 +473,7 @@ void MCR20Drv_IndirectAccessSPIMultiByteRead
 {
     uint16_t  txData;
 
-    if ((numOfBytes == 0) || (byteArray == NULL)) {
+    if ((numOfBytes == 0) || (byteArray == 0)) {
         return;
     }
 

@@ -1,7 +1,6 @@
 /*!
 * Copyright (c) 2015, Freescale Semiconductor, Inc.
 * All rights reserved.
-* SPDX-License-Identifier: BSD-3-Clause
 *
 * \file MCR20Overwrites.h
 * Description: Overwrites header file for MCR20 Register values

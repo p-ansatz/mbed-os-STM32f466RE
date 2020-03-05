@@ -39,7 +39,7 @@ public:
 #if !defined(DOXYGEN_ONLY)
 
 protected:
-    nsapi_protocol_t get_proto() override;
+    virtual nsapi_protocol_t get_proto();
 
 #endif //!defined(DOXYGEN_ONLY)
 };

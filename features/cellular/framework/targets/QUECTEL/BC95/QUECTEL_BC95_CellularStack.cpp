@@ -15,28 +15,16 @@
  * limitations under the License.
  */
 
-#include "rtos/ThisThread.h"
-#include "mbed_error.h"
-#include "platform/mbed_atomic.h"
-#include "events/EventQueue.h"
-#include "events/mbed_shared_queues.h"
-
 #include "QUECTEL_BC95_CellularStack.h"
 #include "CellularUtil.h"
 #include "CellularLog.h"
 
 #define PACKET_SIZE_MAX 1358
-#define TXFULL_EVENT_TIMEOUT (1 * 1000) // ms
-
-#define AT_UPLINK_BUSY          159
-#define AT_UART_BUFFER_ERROR    536
-#define AT_BACK_OFF_TIMER       537
 
 using namespace mbed;
 using namespace mbed_cellular_util;
 
-QUECTEL_BC95_CellularStack::QUECTEL_BC95_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type, AT_CellularDevice &device) :
-    AT_CellularStack(atHandler, cid, stack_type, device), _event_queue(mbed_event_queue()), _txfull_event_id(0)
+QUECTEL_BC95_CellularStack::QUECTEL_BC95_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type) : AT_CellularStack(atHandler, cid, stack_type)
 {
     _at.set_urc_handler("+NSONMI:", mbed::Callback<void()>(this, &QUECTEL_BC95_CellularStack::urc_nsonmi));
     _at.set_urc_handler("+NSOCLI:", mbed::Callback<void()>(this, &QUECTEL_BC95_CellularStack::urc_nsocli));
@@ -44,12 +32,8 @@ QUECTEL_BC95_CellularStack::QUECTEL_BC95_CellularStack(ATHandler &atHandler, int
 
 QUECTEL_BC95_CellularStack::~QUECTEL_BC95_CellularStack()
 {
-    if (_txfull_event_id) {
-        _event_queue->cancel(_txfull_event_id);
-    }
-
-    _at.set_urc_handler("+NSONMI:", nullptr);
-    _at.set_urc_handler("+NSOCLI:", nullptr);
+    _at.set_urc_handler("+NSONMI:", NULL);
+    _at.set_urc_handler("+NSOCLI:", NULL);
 }
 
 nsapi_error_t QUECTEL_BC95_CellularStack::socket_listen(nsapi_socket_t handle, int backlog)
@@ -95,7 +79,7 @@ void QUECTEL_BC95_CellularStack::urc_nsonmi()
 {
     int sock_id = _at.read_int();
 
-    for (int i = 0; i < _device.get_property(AT_CellularDevice::PROPERTY_SOCKET_COUNT); i++) {
+    for (int i = 0; i < get_max_socket_count(); i++) {
         CellularSocket *sock = _socket[i];
         if (sock && sock->id == sock_id) {
             if (sock->_cb) {
@@ -128,6 +112,16 @@ void QUECTEL_BC95_CellularStack::urc_nsocli()
 }
 
 
+int QUECTEL_BC95_CellularStack::get_max_socket_count()
+{
+    return BC95_SOCKET_MAX;
+}
+
+bool QUECTEL_BC95_CellularStack::is_protocol_supported(nsapi_protocol_t protocol)
+{
+    return (protocol == NSAPI_UDP || protocol == NSAPI_TCP);
+}
+
 nsapi_error_t QUECTEL_BC95_CellularStack::socket_close_impl(int sock_id)
 {
     CellularSocket *sock = find_socket(sock_id);
@@ -135,9 +129,6 @@ nsapi_error_t QUECTEL_BC95_CellularStack::socket_close_impl(int sock_id)
     if (sock && sock->closed) {
         return NSAPI_ERROR_OK;
     }
-
-    sock->txfull_event = false;
-
     nsapi_error_t err = _at.at_cmd_discard("+NSOCL", "=", "%d", sock_id);
 
     tr_info("Close socket: %d error: %d", sock_id, err);
@@ -194,8 +185,6 @@ nsapi_size_or_error_t QUECTEL_BC95_CellularStack::socket_sendto_impl(CellularSoc
         return NSAPI_ERROR_PARAMETER;
     }
 
-    int retry = 0;
-retry_send:
     if (socket->proto == NSAPI_UDP) {
         _at.cmd_start("AT+NSOST=");
         _at.write_int(socket->id);
@@ -222,36 +211,6 @@ retry_send:
         return sent_len;
     }
 
-    // check for network congestion
-    device_err_t err = _at.get_last_device_error();
-    if (err.errType == DeviceErrorTypeErrorCME &&
-            (err.errCode == AT_UART_BUFFER_ERROR || err.errCode == AT_BACK_OFF_TIMER) || err.errCode == AT_UPLINK_BUSY) {
-        if (socket->proto == NSAPI_UDP) {
-            if (retry < 3) {
-                retry++;
-                tr_warn("Socket %d sendto EAGAIN", socket->id);
-                rtos::ThisThread::sleep_for(30);
-                _at.clear_error();
-                goto retry_send;
-            }
-            return NSAPI_ERROR_NO_MEMORY;
-        }
-        _socket_mutex.lock();
-        if (!socket->txfull_event && !_txfull_event_id) {
-            tr_warn("socket %d tx full", socket->id);
-            socket->txfull_event = true;
-            _txfull_event_id = _event_queue->call_in(TXFULL_EVENT_TIMEOUT, callback(this, &QUECTEL_BC95_CellularStack::txfull_event_timeout));
-            if (!_txfull_event_id) {
-                MBED_ERROR(MBED_MAKE_ERROR(MBED_MODULE_DRIVER, MBED_ERROR_CODE_ENOMEM), \
-                           "QUECTEL_BC95_CellularStack::socket_sendto_impl(): unable to add event to queue. Increase \"events.shared-eventsize\"\n");
-                _socket_mutex.unlock();
-                return NSAPI_ERROR_NO_MEMORY;
-            }
-        }
-        _socket_mutex.unlock();
-        return NSAPI_ERROR_WOULD_BLOCK;
-    }
-
     return _at.get_last_error();
 }
 
@@ -274,7 +233,7 @@ nsapi_size_or_error_t QUECTEL_BC95_CellularStack::socket_recvfrom_impl(CellularS
     _at.read_string(ip_address, sizeof(ip_address));
     port = _at.read_int();
     recv_len = _at.read_int();
-    int hexlen = _at.read_hex_string((char *)buffer, recv_len);
+    int hexlen = _at.read_hex_string((char *)buffer, size);
     // remaining length
     _at.skip_param();
     _at.resp_stop();
@@ -292,18 +251,4 @@ nsapi_size_or_error_t QUECTEL_BC95_CellularStack::socket_recvfrom_impl(CellularS
         tr_error("Not received as much data as expected. Should receive: %d bytes, received: %d bytes", recv_len, hexlen);
     }
     return recv_len;
-}
-
-void QUECTEL_BC95_CellularStack::txfull_event_timeout()
-{
-    _socket_mutex.lock();
-    _txfull_event_id = 0;
-    for (int i = 0; i < _device.get_property(AT_CellularDevice::PROPERTY_SOCKET_COUNT); i++) {
-        CellularSocket *sock = _socket[i];
-        if (sock && sock->_cb && sock->txfull_event) {
-            sock->txfull_event = false;
-            sock->_cb(sock->_data);
-        }
-    }
-    _socket_mutex.unlock();
 }

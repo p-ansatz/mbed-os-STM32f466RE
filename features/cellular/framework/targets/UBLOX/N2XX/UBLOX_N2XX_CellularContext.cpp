@@ -38,15 +38,10 @@ NetworkStack *UBLOX_N2XX_CellularContext::get_stack()
         return NULL;
     }
     if (!_stack) {
-        _stack = new UBLOX_N2XX_CellularStack(_at, _cid, (nsapi_ip_stack_t)_pdp_type, *get_device());
+        _stack = new UBLOX_N2XX_CellularStack(_at, _cid, (nsapi_ip_stack_t)_pdp_type);
     }
     return _stack;
 }
 #endif
-
-const char *UBLOX_N2XX_CellularContext::get_nonip_context_type_str()
-{
-    return "NONIP";
-}
 
 } /* namespace mbed */

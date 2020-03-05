@@ -23,7 +23,7 @@ namespace mbed {
 
 class QUECTEL_BC95_CellularInformation : public AT_CellularInformation {
 public:
-    QUECTEL_BC95_CellularInformation(ATHandler &at, AT_CellularDevice &device);
+    QUECTEL_BC95_CellularInformation(ATHandler &at);
     virtual ~QUECTEL_BC95_CellularInformation();
 
 public:

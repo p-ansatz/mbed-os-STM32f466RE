@@ -21,7 +21,7 @@
 using namespace mbed;
 using namespace events;
 
-static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
+static const intptr_t cellular_properties[AT_CellularBase::PROPERTY_MAX] = {
     AT_CellularNetwork::RegistrationModeDisable,// C_EREG
     AT_CellularNetwork::RegistrationModeLAC,    // C_GREG
     AT_CellularNetwork::RegistrationModeLAC,    // C_REG
@@ -36,17 +36,17 @@ static const intptr_t cellular_properties[AT_CellularDevice::PROPERTY_MAX] = {
     0,  // PROPERTY_IPV6_STACK
     0,  // PROPERTY_IPV4V6_STACK
     0,  // PROPERTY_NON_IP_PDP_TYPE
-    1,  // PROPERTY_AT_CGEREP,
-    1,  // PROPERTY_AT_COPS_FALLBACK_AUTO
-    0,  // PROPERTY_SOCKET_COUNT
-    0,  // PROPERTY_IP_TCP
-    0,  // PROPERTY_IP_UDP
-    20, // PROPERTY_AT_SEND_DELAY
+    1,  // PROPERTY_AT_CGEREP
 };
 
 TELIT_HE910::TELIT_HE910(FileHandle *fh) : AT_CellularDevice(fh)
 {
-    set_cellular_properties(cellular_properties);
+    AT_CellularBase::set_cellular_properties(cellular_properties);
+}
+
+uint16_t TELIT_HE910::get_send_delay() const
+{
+    return DEFAULT_DELAY_BETWEEN_AT_COMMANDS;
 }
 
 nsapi_error_t TELIT_HE910::init()
@@ -55,14 +55,14 @@ nsapi_error_t TELIT_HE910::init()
     if (err != NSAPI_ERROR_OK) {
         return err;
     }
-    return _at.at_cmd_discard("&K0;&C1;&D0", "");
+    return _at->at_cmd_discard("&K0;&C1;&D0", "");
 }
 
 #if MBED_CONF_TELIT_HE910_PROVIDE_DEFAULT
-#include "drivers/BufferedSerial.h"
+#include "UARTSerial.h"
 CellularDevice *CellularDevice::get_default_instance()
 {
-    static BufferedSerial serial(MBED_CONF_TELIT_HE910_TX, MBED_CONF_TELIT_HE910_RX, MBED_CONF_TELIT_HE910_BAUDRATE);
+    static UARTSerial serial(MBED_CONF_TELIT_HE910_TX, MBED_CONF_TELIT_HE910_RX, MBED_CONF_TELIT_HE910_BAUDRATE);
 #if defined (MBED_CONF_TELIT_HE910_RTS) && defined (MBED_CONF_TELIT_HE910_CTS)
     tr_debug("TELIT_HE910 flow control: RTS %d CTS %d", MBED_CONF_TELIT_HE910_RTS, MBED_CONF_TELIT_HE910_CTS);
     serial.set_flow_control(SerialBase::RTSCTS, MBED_CONF_TELIT_HE910_RTS, MBED_CONF_TELIT_HE910_CTS);

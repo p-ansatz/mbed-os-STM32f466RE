@@ -35,7 +35,6 @@
 
 #include "mbedtls/hmac_drbg.h"
 #include "mbedtls/platform_util.h"
-#include "mbedtls/error.h"
 
 #include <string.h>
 
@@ -75,7 +74,7 @@ int mbedtls_hmac_drbg_update_ret( mbedtls_hmac_drbg_context *ctx,
     unsigned char rounds = ( additional != NULL && add_len != 0 ) ? 2 : 1;
     unsigned char sep[1];
     unsigned char K[MBEDTLS_MD_MAX_SIZE];
-    int ret = MBEDTLS_ERR_MD_BAD_INPUT_DATA;
+    int ret;
 
     for( sep[0] = 0; sep[0] < rounds; sep[0]++ )
     {
@@ -128,7 +127,7 @@ int mbedtls_hmac_drbg_seed_buf( mbedtls_hmac_drbg_context *ctx,
                         const mbedtls_md_info_t * md_info,
                         const unsigned char *data, size_t data_len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
 
     if( ( ret = mbedtls_md_setup( &ctx->md_ctx, md_info, 1 ) ) != 0 )
         return( ret );
@@ -160,7 +159,7 @@ static int hmac_drbg_reseed_core( mbedtls_hmac_drbg_context *ctx,
 {
     unsigned char seed[MBEDTLS_HMAC_DRBG_MAX_SEED_INPUT];
     size_t seedlen = 0;
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
 
     {
         size_t total_entropy_len;
@@ -252,7 +251,7 @@ int mbedtls_hmac_drbg_seed( mbedtls_hmac_drbg_context *ctx,
                     const unsigned char *custom,
                     size_t len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t md_size;
 
     if( ( ret = mbedtls_md_setup( &ctx->md_ctx, md_info, 1 ) ) != 0 )
@@ -274,19 +273,16 @@ int mbedtls_hmac_drbg_seed( mbedtls_hmac_drbg_context *ctx,
 
     ctx->reseed_interval = MBEDTLS_HMAC_DRBG_RESEED_INTERVAL;
 
-    if( ctx->entropy_len == 0 )
-    {
-        /*
-         * See SP800-57 5.6.1 (p. 65-66) for the security strength provided by
-         * each hash function, then according to SP800-90A rev1 10.1 table 2,
-         * min_entropy_len (in bits) is security_strength.
-         *
-         * (This also matches the sizes used in the NIST test vectors.)
-         */
-        ctx->entropy_len = md_size <= 20 ? 16 : /* 160-bits hash -> 128 bits */
-                           md_size <= 28 ? 24 : /* 224-bits hash -> 192 bits */
-                           32;  /* better (256+) -> 256 bits */
-    }
+    /*
+     * See SP800-57 5.6.1 (p. 65-66) for the security strength provided by
+     * each hash function, then according to SP800-90A rev1 10.1 table 2,
+     * min_entropy_len (in bits) is security_strength.
+     *
+     * (This also matches the sizes used in the NIST test vectors.)
+     */
+    ctx->entropy_len = md_size <= 20 ? 16 : /* 160-bits hash -> 128 bits */
+                       md_size <= 28 ? 24 : /* 224-bits hash -> 192 bits */
+                       32;  /* better (256+) -> 256 bits */
 
     if( ( ret = hmac_drbg_reseed_core( ctx, custom, len,
                                        1 /* add nonce */ ) ) != 0 )
@@ -307,7 +303,7 @@ void mbedtls_hmac_drbg_set_prediction_resistance( mbedtls_hmac_drbg_context *ctx
 }
 
 /*
- * Set entropy length grabbed for seeding
+ * Set entropy length grabbed for reseeds
  */
 void mbedtls_hmac_drbg_set_entropy_len( mbedtls_hmac_drbg_context *ctx, size_t len )
 {
@@ -330,7 +326,7 @@ int mbedtls_hmac_drbg_random_with_add( void *p_rng,
                                unsigned char *output, size_t out_len,
                                const unsigned char *additional, size_t add_len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     mbedtls_hmac_drbg_context *ctx = (mbedtls_hmac_drbg_context *) p_rng;
     size_t md_len = mbedtls_md_get_size( ctx->md_ctx.md_info );
     size_t left = out_len;
@@ -399,7 +395,7 @@ exit:
  */
 int mbedtls_hmac_drbg_random( void *p_rng, unsigned char *output, size_t out_len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     mbedtls_hmac_drbg_context *ctx = (mbedtls_hmac_drbg_context *) p_rng;
 
 #if defined(MBEDTLS_THREADING_C)
@@ -435,7 +431,7 @@ void mbedtls_hmac_drbg_free( mbedtls_hmac_drbg_context *ctx )
 #if defined(MBEDTLS_FS_IO)
 int mbedtls_hmac_drbg_write_seed_file( mbedtls_hmac_drbg_context *ctx, const char *path )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     FILE *f;
     unsigned char buf[ MBEDTLS_HMAC_DRBG_MAX_INPUT ];
 

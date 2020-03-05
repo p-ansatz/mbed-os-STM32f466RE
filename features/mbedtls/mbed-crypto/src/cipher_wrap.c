@@ -32,7 +32,6 @@
 #if defined(MBEDTLS_CIPHER_C)
 
 #include "mbedtls/cipher_internal.h"
-#include "mbedtls/error.h"
 
 #if defined(MBEDTLS_CHACHAPOLY_C)
 #include "mbedtls/chachapoly.h"
@@ -1917,7 +1916,7 @@ static int chacha20_stream_wrap( void *ctx,  size_t length,
                                  const unsigned char *input,
                                  unsigned char *output )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
 
     ret = mbedtls_chacha20_update( ctx, length, input, output );
     if( ret == MBEDTLS_ERR_CHACHA20_BAD_INPUT_DATA )

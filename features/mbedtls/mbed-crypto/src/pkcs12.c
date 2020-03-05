@@ -37,7 +37,6 @@
 #include "mbedtls/asn1.h"
 #include "mbedtls/cipher.h"
 #include "mbedtls/platform_util.h"
-#include "mbedtls/error.h"
 
 #include <string.h>
 
@@ -54,7 +53,7 @@
 static int pkcs12_parse_pbe_params( mbedtls_asn1_buf *params,
                                     mbedtls_asn1_buf *salt, int *iterations )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     unsigned char **p = &params->p;
     const unsigned char *end = params->p + params->len;
 
@@ -146,7 +145,7 @@ int mbedtls_pkcs12_pbe_sha1_rc4_128( mbedtls_asn1_buf *pbe_params, int mode,
     ((void) output);
     return( MBEDTLS_ERR_PKCS12_FEATURE_UNAVAILABLE );
 #else
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     unsigned char key[16];
     mbedtls_arc4_context ctx;
     ((void) mode);
@@ -251,7 +250,7 @@ int mbedtls_pkcs12_derivation( unsigned char *data, size_t datalen,
                        const unsigned char *salt, size_t saltlen,
                        mbedtls_md_type_t md_type, int id, int iterations )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     unsigned int j;
 
     unsigned char diversifier[128];

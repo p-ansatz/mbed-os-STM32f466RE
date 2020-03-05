@@ -51,18 +51,42 @@ public:
                           "The TCPSocket(S *stack) constructor is deprecated."
                           "It discards the open() call return value."
                           "Use another constructor and call open() explicitly, instead.")
-    TCPSocket(S *stack) : TCPSocket()
+    TCPSocket(S *stack)
     {
         open(stack);
     }
 
+    /** Destroy a socket
+     *
+     *  Closes socket if the socket is still open
+     */
+    virtual ~TCPSocket();
+
     /** Override multicast functions to return error for TCP
      *
      */
-    int join_multicast_group(const SocketAddress &address)
+    virtual int join_multicast_group(const SocketAddress &address)
     {
         return NSAPI_ERROR_UNSUPPORTED;
     }
+
+    /** Connects TCP socket to a remote host
+     *
+     *  Initiates a connection to a remote server specified by either
+     *  a domain name or an IP address and a port.
+     *
+     *  @param host     Hostname of the remote host
+     *  @param port     Port of the remote host
+     *  @retval         NSAPI_ERROR_OK on success
+     *  @retval         NSAPI_ERROR_IN_PROGRESS if the operation is ongoing
+     *  @retval         NSAPI_ERROR_NO_SOCKET if the socket has not been allocated
+     *  @retval         NSAPI_ERROR_DNS_FAILURE if the DNS address of host could not be resolved
+     *  @retval         NSAPI_ERROR_IS_CONNECTED if the connection is already established
+     *  @retval         int Other negative error codes for stack-related failures.
+     *                  See NetworkStack::socket_connect().
+     */
+    MBED_DEPRECATED_SINCE("mbed-os-5.15", "String-based APIs are deprecated")
+    nsapi_error_t connect(const char *host, uint16_t port);
 
     /** Connects TCP socket to a remote host
      *
@@ -78,7 +102,7 @@ public:
      *  @retval         int Other negative error codes for stack-related failures.
      *                  See NetworkStack::socket_connect().
      */
-    nsapi_error_t connect(const SocketAddress &address) override;
+    virtual nsapi_error_t connect(const SocketAddress &address);
 
     /** Send data over a TCP socket
      *
@@ -98,7 +122,7 @@ public:
      *  @retval         int Other negative error codes for stack-related failures.
      *                  See @ref NetworkStack::socket_send.
      */
-    nsapi_size_or_error_t send(const void *data, nsapi_size_t size) override;
+    virtual nsapi_size_or_error_t send(const void *data, nsapi_size_t size);
 
     /** Receive data over a TCP socket
      *
@@ -118,7 +142,7 @@ public:
      *  @retval         int Other negative error codes for stack-related failures.
      *                  See @ref NetworkStack::socket_recv.
      */
-    nsapi_size_or_error_t recv(void *data, nsapi_size_t size) override;
+    virtual nsapi_size_or_error_t recv(void *data, nsapi_size_t size);
 
     /** Send data on a socket.
      *
@@ -138,8 +162,8 @@ public:
      *  @retval         int Other negative error codes for stack-related failures.
      *                  See @ref NetworkStack::socket_send.
      */
-    nsapi_size_or_error_t sendto(const SocketAddress &address,
-                                 const void *data, nsapi_size_t size) override;
+    virtual nsapi_size_or_error_t sendto(const SocketAddress &address,
+                                         const void *data, nsapi_size_t size);
 
     /** Receive a data from a socket
      *
@@ -160,8 +184,8 @@ public:
      *  @retval         int Other negative error codes for stack-related failures.
      *                  See @ref NetworkStack::socket_recv.
      */
-    nsapi_size_or_error_t recvfrom(SocketAddress *address,
-                                   void *data, nsapi_size_t size) override;
+    virtual nsapi_size_or_error_t recvfrom(SocketAddress *address,
+                                           void *data, nsapi_size_t size);
 
     /** Accepts a connection on a socket.
      *
@@ -173,13 +197,10 @@ public:
      *  By default, accept blocks until incoming connection occurs. If socket is set to
      *  non-blocking or times out, error is set to NSAPI_ERROR_WOULD_BLOCK.
      *
-     *  @param error      pointer to storage of the error value or NULL:
-     *                    NSAPI_ERROR_OK on success
-     *                    NSAPI_ERROR_WOULD_BLOCK if socket is set to non-blocking and would block
-     *                    NSAPI_ERROR_NO_SOCKET if the socket was not open
+     *  @param error      pointer to storage of the error value or NULL
      *  @return           pointer to a socket
      */
-    TCPSocket *accept(nsapi_error_t *error = NULL) override;
+    virtual TCPSocket *accept(nsapi_error_t *error = NULL);
 
     /** Listen for incoming connections.
      *
@@ -193,11 +214,11 @@ public:
      *  @retval         int Other negative error codes for stack-related failures.
      *                  See @ref NetworkStack::socket_listen.
      */
-    nsapi_error_t listen(int backlog = 1) override;
+    virtual nsapi_error_t listen(int backlog = 1);
 
 protected:
     friend class TCPServer;
-    nsapi_protocol_t get_proto() override;
+    virtual nsapi_protocol_t get_proto();
 
 private:
     /** Create a socket out of a given socket

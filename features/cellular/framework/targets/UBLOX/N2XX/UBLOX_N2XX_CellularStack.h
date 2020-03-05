@@ -28,7 +28,7 @@ class UBLOX_N2XX_CellularStack : public AT_CellularStack {
 
 public:
 
-    UBLOX_N2XX_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type, AT_CellularDevice &device);
+    UBLOX_N2XX_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type);
     virtual ~UBLOX_N2XX_CellularStack();
 
 protected:
@@ -47,10 +47,18 @@ protected:
      */
     static const int SOCKET_TIMEOUT = 1000;
 
+    /** Maximum allowed sockets.
+     */
+    static const int N2XX_MAX_SOCKET = 7;
+
     /** The maximum number of bytes in a packet that can be write/read from
      * the AT interface in one go.
      */
     static const int N2XX_MAX_PACKET_SIZE = 512;
+
+    virtual int get_max_socket_count();
+
+    virtual bool is_protocol_supported(nsapi_protocol_t protocol);
 
     virtual nsapi_error_t create_socket_impl(CellularSocket *socket);
 

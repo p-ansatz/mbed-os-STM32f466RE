@@ -545,7 +545,8 @@ retry:
              */
             ns_list_foreach(rpl_neighbour_t, neighbour, &instance->candidate_neighbours) {
                 if (neighbour->dao_path_control & unassigned_pc) {
-                    *path_control = neighbour->dao_path_control;
+                    unassigned_pc &= neighbour->dao_path_control;
+                    *path_control = unassigned_pc;
                     *parent = neighbour;
                     return target;
                 }
@@ -560,7 +561,14 @@ retry:
             }
         }
 
-        *path_control = target->path_control;
+        /* If looking for a follow-up target, final path control must match */
+        if (t1) {
+            if (unassigned_pc != *path_control) {
+                continue;
+            }
+        } else {
+            *path_control = unassigned_pc;
+        }
         return target;
     }
 
@@ -1778,7 +1786,7 @@ static bool rpl_instance_push_address_registration(protocol_interface_info_entry
     if (!buf) {
         return false;
     }
-    tr_info("Send ARO %s to %s", trace_ipv6(addr->address), trace_ipv6(neighbour->ll_address));
+    tr_debug("Send ARO %s to %s", trace_ipv6(addr->address), trace_ipv6(neighbour->ll_address));
     protocol_push(buf);
     return true;
 }
@@ -1803,8 +1811,6 @@ static void rpl_instance_address_registration_cancel(rpl_instance_t *instance)
     instance->wait_response = NULL;
     instance->pending_neighbour_confirmation = false;
     instance->delay_dao_timer = 0;
-    instance->dao_in_transit = false;
-    instance->dao_retry_timer = 0;
 }
 
 void rpl_instance_parent_address_reg_timer_update(rpl_instance_t *instance, uint16_t seconds)

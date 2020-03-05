@@ -40,7 +40,7 @@ NetworkStack *UBLOX_AT_CellularContext::get_stack()
         return NULL;
     }
     if (!_stack) {
-        _stack = new UBLOX_AT_CellularStack(_at, _cid, (nsapi_ip_stack_t)_pdp_type, *get_device());
+        _stack = new UBLOX_AT_CellularStack(_at, _cid, (nsapi_ip_stack_t)_pdp_type);
     }
 
     return _stack;
@@ -297,6 +297,11 @@ void UBLOX_AT_CellularContext::get_next_credentials(char **config)
         _uname  = _APN_GET(*config);
         _pwd    = _APN_GET(*config);
     }
+}
+
+const char *UBLOX_AT_CellularContext::get_gateway()
+{
+    return get_ip_address();
 }
 
 nsapi_error_t UBLOX_AT_CellularContext::get_gateway(SocketAddress *addr)

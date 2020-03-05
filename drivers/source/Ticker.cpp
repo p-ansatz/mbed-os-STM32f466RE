@@ -17,18 +17,19 @@
 #include "drivers/Ticker.h"
 
 #include "drivers/TimerEvent.h"
+#include "platform/FunctionPointer.h"
 #include "hal/ticker_api.h"
 #include "platform/mbed_critical.h"
 #include "platform/mbed_power_mgmt.h"
 
 namespace mbed {
 
-Ticker::Ticker() : TimerEvent(), _delay(0), _lock_deepsleep(true)
+Ticker::Ticker() : TimerEvent(), _delay(0), _function(0), _lock_deepsleep(true)
 {
 }
 
 // When low power ticker is in use, then do not disable deep sleep.
-Ticker::Ticker(const ticker_data_t *data) : TimerEvent(data), _delay(0), _lock_deepsleep(!data->interface->runs_in_deep_sleep)
+Ticker::Ticker(const ticker_data_t *data) : TimerEvent(data), _delay(0), _function(0), _lock_deepsleep(!data->interface->runs_in_deep_sleep)
 {
 }
 

@@ -63,7 +63,7 @@ public:
      *
      *  Closes socket wrapper if the socket wrapper is still open.
      */
-    ~TLSSocketWrapper() override;
+    virtual ~TLSSocketWrapper();
 
     /** Set hostname.
      *
@@ -92,9 +92,6 @@ public:
      * @note Must be called before calling connect()
      *
      * @param root_ca_pem Root CA Certificate in PEM format.
-     * @retval NSAPI_ERROR_OK on success.
-     * @retval NSAPI_ERROR_NO_MEMORY in case there is not enough memory to allocate certificate.
-     * @retval NSAPI_ERROR_PARAMETER in case the provided root_ca parameter failed parsing.
      */
     nsapi_error_t set_root_ca_cert(const char *root_ca_pem);
 
@@ -133,7 +130,7 @@ public:
      *  @retval         NSAPI_ERROR_DEVICE_ERROR in case of tls-related errors.
      *                  See @ref mbedtls_ssl_write.
      */
-    nsapi_error_t send(const void *data, nsapi_size_t size) override;
+    virtual nsapi_error_t send(const void *data, nsapi_size_t size);
 
     /** Receive data over a TLS socket.
      *
@@ -151,10 +148,10 @@ public:
      *  @return         0 if no data is available to be received
      *                  and the peer has performed an orderly shutdown.
      */
-    nsapi_size_or_error_t recv(void *data, nsapi_size_t size) override;
+    virtual nsapi_size_or_error_t recv(void *data, nsapi_size_t size);
 
     /* = Functions inherited from Socket = */
-    nsapi_error_t close() override;
+    virtual nsapi_error_t close();
     /**
      *  Connect the transport socket and start handshake.
      *
@@ -163,19 +160,19 @@ public:
      *
      *  See @ref Socket::connect and @ref start_handshake
      */
-    nsapi_error_t connect(const SocketAddress &address = SocketAddress()) override;
-    nsapi_size_or_error_t sendto(const SocketAddress &address, const void *data, nsapi_size_t size) override;
-    nsapi_size_or_error_t recvfrom(SocketAddress *address,
-                                   void *data, nsapi_size_t size) override;
-    nsapi_error_t bind(const SocketAddress &address) override;
-    void set_blocking(bool blocking) override;
-    void set_timeout(int timeout) override;
-    void sigio(mbed::Callback<void()> func) override;
-    nsapi_error_t setsockopt(int level, int optname, const void *optval, unsigned optlen) override;
-    nsapi_error_t getsockopt(int level, int optname, void *optval, unsigned *optlen) override;
-    Socket *accept(nsapi_error_t *error = NULL) override;
-    nsapi_error_t listen(int backlog = 1) override;
-    nsapi_error_t getpeername(SocketAddress *address) override;
+    virtual nsapi_error_t connect(const SocketAddress &address = SocketAddress());
+    virtual nsapi_size_or_error_t sendto(const SocketAddress &address, const void *data, nsapi_size_t size);
+    virtual nsapi_size_or_error_t recvfrom(SocketAddress *address,
+                                           void *data, nsapi_size_t size);
+    virtual nsapi_error_t bind(const SocketAddress &address);
+    virtual void set_blocking(bool blocking);
+    virtual void set_timeout(int timeout);
+    virtual void sigio(mbed::Callback<void()> func);
+    virtual nsapi_error_t setsockopt(int level, int optname, const void *optval, unsigned optlen);
+    virtual nsapi_error_t getsockopt(int level, int optname, void *optval, unsigned *optlen);
+    virtual Socket *accept(nsapi_error_t *error = NULL);
+    virtual nsapi_error_t listen(int backlog = 1);
+    virtual nsapi_error_t getpeername(SocketAddress *address);
 
 #if defined(MBEDTLS_X509_CRT_PARSE_C) || defined(DOXYGEN_ONLY)
     /** Get own certificate directly from Mbed TLS.
@@ -296,13 +293,13 @@ private:
     rtos::EventFlags _event_flag;
     mbed::Callback<void()> _sigio;
     Socket *_transport;
-    int _timeout = -1;
+    int _timeout;
 
 #ifdef MBEDTLS_X509_CRT_PARSE_C
-    mbedtls_x509_crt *_cacert = nullptr;
-    mbedtls_x509_crt *_clicert = nullptr;
+    mbedtls_x509_crt *_cacert;
+    mbedtls_x509_crt *_clicert;
 #endif
-    mbedtls_ssl_config *_ssl_conf = nullptr;
+    mbedtls_ssl_config *_ssl_conf;
 
     bool _connect_transport: 1;
     bool _close_transport: 1;

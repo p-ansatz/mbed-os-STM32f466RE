@@ -38,15 +38,10 @@ NetworkStack *QUECTEL_BC95_CellularContext::get_stack()
     }
 
     if (!_stack) {
-        _stack = new QUECTEL_BC95_CellularStack(_at, _cid, (nsapi_ip_stack_t)_pdp_type, *get_device());
+        _stack = new QUECTEL_BC95_CellularStack(_at, _cid, (nsapi_ip_stack_t)_pdp_type);
     }
     return _stack;
 }
 #endif // #if !NSAPI_PPP_AVAILABLE
-
-const char *QUECTEL_BC95_CellularContext::get_nonip_context_type_str()
-{
-    return "NONIP";
-}
 
 } /* namespace mbed */

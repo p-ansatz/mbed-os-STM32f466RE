@@ -27,8 +27,7 @@
 using namespace mbed;
 using namespace mbed_cellular_util;
 
-RM1000_AT_CellularStack::RM1000_AT_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type, AT_CellularDevice &device) :
-    AT_CellularStack(atHandler, cid, stack_type, device)
+RM1000_AT_CellularStack::RM1000_AT_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type) : AT_CellularStack(atHandler, cid, stack_type)
 {
     tr_debug("RM1000_AT_CellularStack::RM1000_AT_CellularStack");
 
@@ -69,7 +68,7 @@ void RM1000_AT_CellularStack::RUSORCV_URC()
     if (socket != NULL) {
         socket->pending_bytes = b;
         // No debug prints here as they can affect timing
-        // and cause data loss in BufferedSerial
+        // and cause data loss in UARTSerial
         if (socket->_cb != NULL) {
             socket->_cb(socket->_data);
         }
@@ -87,6 +86,17 @@ void RM1000_AT_CellularStack::RUSOCL_URC()
     clear_socket(socket);
 }
 
+int RM1000_AT_CellularStack::get_max_socket_count()
+{
+    tr_debug("RM1000_AT_CellularStack::get_max_socket_count");
+    return RM1000_MAX_SOCKET;
+}
+
+bool RM1000_AT_CellularStack::is_protocol_supported(nsapi_protocol_t protocol)
+{
+    return (protocol == NSAPI_UDP || protocol == NSAPI_TCP);
+}
+
 nsapi_error_t RM1000_AT_CellularStack::create_socket_impl(CellularSocket *socket)
 {
     tr_debug("RM1000_AT_CellularStack::create_socket_impl");
@@ -98,7 +108,7 @@ nsapi_error_t RM1000_AT_CellularStack::create_socket_impl(CellularSocket *socket
         err = _at.at_cmd_int("+RSOCR", "=0", sock_id);
     } else if (socket->proto == NSAPI_TCP) {
         err = _at.at_cmd_int("+RSOCR", "=1", sock_id);
-    } // Unsupported protocol is checked in socket_open()
+    } // Unsupported protocol is checked in "is_protocol_supported" function
 
     if ((err != NSAPI_ERROR_OK) || (sock_id == -1)) {
         tr_error("RM1000_AT_CellularStack::create_socket_impl error sock_id=%d err=%d", sock_id, err);
@@ -106,7 +116,7 @@ nsapi_error_t RM1000_AT_CellularStack::create_socket_impl(CellularSocket *socket
     }
 
     // Check for duplicate socket id delivered by modem
-    for (int i = 0; i < _device.get_property(AT_CellularDevice::PROPERTY_SOCKET_COUNT); i++) {
+    for (int i = 0; i < RM1000_MAX_SOCKET; i++) {
         CellularSocket *sock = _socket[i];
         if (sock && sock != socket && sock->id == sock_id) {
             return NSAPI_ERROR_NO_SOCKET;

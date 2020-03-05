@@ -67,11 +67,10 @@
 #include "drivers/SPISlave.h"
 #include "drivers/I2C.h"
 #include "drivers/I2CSlave.h"
+#include "drivers/Ethernet.h"
 #include "drivers/CAN.h"
 #include "drivers/RawSerial.h"
-#include "drivers/UnbufferedSerial.h"
 #include "drivers/UARTSerial.h"
-#include "drivers/BufferedSerial.h"
 #include "drivers/FlashIAP.h"
 #include "drivers/MbedCRC.h"
 #include "drivers/QSPI.h"
@@ -106,6 +105,7 @@
 
 // mbed Non-hardware components
 #include "platform/Callback.h"
+#include "platform/FunctionPointer.h"
 #include "platform/ScopedLock.h"
 
 #ifndef MBED_NO_GLOBAL_USING_DIRECTIVE

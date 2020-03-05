@@ -34,20 +34,14 @@
             "target.network-default-interface-type": "CELLULAR",
             "nsapi.default-cellular-sim-pin": null,
             "nsapi.dns-response-wait-time": 30000,
+            "ppp-cell-iface.apn-lookup": false,
             "cellular.use-apn-lookup": false,
             "lwip.ipv4-enabled": true,
-            "ppp.ipv4-enabled": true,
             "lwip.ipv6-enabled": true,
-            "ppp.ipv6-enabled": true,
             "lwip.tcp-enabled": true,
             "lwip.ppp-enabled": true,
             "lwip.ethernet-enabled": false,
             "cellular.debug-at": false
-        },
-        "UBLOX_C030_R412M": {
-            "platform.stdio-convert-newlines": true,
-            "platform.stdio-baud-rate": 115200,
-            "platform.default-serial-baud-rate": 115200
         }
     }
 }

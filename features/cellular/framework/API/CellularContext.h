@@ -122,6 +122,8 @@ public: // from NetworkInterface
     virtual nsapi_error_t set_blocking(bool blocking) = 0;
     virtual NetworkStack *get_stack() = 0;
     virtual nsapi_error_t get_ip_address(SocketAddress *address) = 0;
+    MBED_DEPRECATED_SINCE("mbed-os-5.15", "String-based APIs are deprecated")
+    virtual const char *get_ip_address() = 0;
 
     /** Register callback for status reporting.
      *
@@ -144,6 +146,12 @@ public: // from NetworkInterface
     virtual nsapi_error_t connect(const char *sim_pin, const char *apn = 0, const char *uname = 0,
                                   const char *pwd = 0) = 0;
     virtual void set_credentials(const char *apn, const char *uname = 0, const char *pwd = 0) = 0;
+    virtual nsapi_error_t get_netmask(SocketAddress *address) = 0;
+    MBED_DEPRECATED_SINCE("mbed-os-5.15", "String-based APIs are deprecated")
+    virtual const char *get_netmask() = 0;
+    virtual nsapi_error_t get_gateway(SocketAddress *address) = 0;
+    MBED_DEPRECATED_SINCE("mbed-os-5.15", "String-based APIs are deprecated")
+    virtual const char *get_gateway() = 0;
     virtual bool is_connected() = 0;
 
     /** Same as NetworkInterface::get_default_instance()
@@ -152,6 +160,7 @@ public: // from NetworkInterface
      *
      */
     static CellularContext *get_default_instance();
+
 
     /** Instantiates a default Non-IP cellular interface
      *
@@ -253,23 +262,21 @@ public: // from NetworkInterface
      */
     virtual nsapi_error_t get_apn_backoff_timer(int &backoff_timer) = 0;
 
-#if (DEVICE_SERIAL && DEVICE_INTERRUPTIN) || defined(DOXYGEN_ONLY)
-
-    /** Enable or disable hang-up detection.
+    /** Set the file handle used to communicate with the modem. You can use this to change the default file handle.
      *
-     *  This method will use data carrier detect to be able to detect disconnection much faster in PPP mode.
-     *
-     *  When in PPP data pump mode, it is helpful if the FileHandle will signal hang-up via
-     *  POLLHUP, e.g., if the DCD line is deasserted on a UART. During command mode, this
-     *  signaling is not desired.
-     *
-     *  @param dcd_pin      Pin used to set data carrier detect on/off for the given UART. NC if feature is disabled.
-     *  @param active_high  a boolean set to true if DCD polarity is active low
-     *
-     *  @return             NSAPI_ERROR_OK if success,
-     *                      NSAPI_ERROR_UNSUPPORTED if modem does not support this feature
+     *  @param fh   file handle for communicating with the modem
      */
-    virtual nsapi_error_t configure_hup(PinName dcd_pin = NC, bool active_high = false) = 0;
+    virtual void set_file_handle(FileHandle *fh) = 0;
+
+#if (DEVICE_SERIAL && DEVICE_INTERRUPTIN) || defined(DOXYGEN_ONLY)
+    /** Set the UART serial used to communicate with the modem. Can be used to change default file handle.
+     *  File handle set with this method will use data carrier detect to be able to detect disconnection much faster in PPP mode.
+     *
+     *  @param serial       UARTSerial used in communication to modem. If null then the default file handle is used.
+     *  @param dcd_pin      Pin used to set data carrier detect on/off for the given UART
+     *  @param active_high  a boolean set to true if DCD polarity is active low
+     */
+    virtual void set_file_handle(UARTSerial *serial, PinName dcd_pin = NC, bool active_high = false) = 0;
 #endif // #if DEVICE_SERIAL
 
     /** Returns the control plane AT command interface
@@ -299,14 +306,6 @@ protected: // Device specific implementations might need these so protected
         OP_MAX          = 5
     };
 
-    enum pdp_type_t {
-        DEFAULT_PDP_TYPE = DEFAULT_STACK,
-        IPV4_PDP_TYPE = IPV4_STACK,
-        IPV6_PDP_TYPE = IPV6_STACK,
-        IPV4V6_PDP_TYPE = IPV4V6_STACK,
-        NON_IP_PDP_TYPE
-    };
-
     /** The CellularDevice calls the status callback function on status changes on the network or CellularDevice.
     *
     *  @param ev   event type
@@ -314,15 +313,14 @@ protected: // Device specific implementations might need these so protected
     */
     virtual void cellular_callback(nsapi_event_t ev, intptr_t ptr) = 0;
 
-    /** Return PDP type string for Non-IP if modem uses other than standard "Non-IP"
+    /** Enable or disable hang-up detection
      *
-     *  Some modems uses a non-standard PDP type string for non-ip (e.g. "NONIP").
-     *  In those cases modem driver must implement this method to return the PDP type string
-     *  used by the modem.
-     *
-     *  @return PDP type string used by the modem or NULL if standard ("Non-IP")
+     *  When in PPP data pump mode, it is helpful if the FileHandle will signal hang-up via
+     *  POLLHUP, e.g., if the DCD line is deasserted on a UART. During command mode, this
+     *  signaling is not desired. enable_hup() controls whether this function should be
+     *  active.
      */
-    virtual const char *get_nonip_context_type_str() = 0;
+    virtual void enable_hup(bool enable) = 0;
 
     /** Triggers control plane's operations needed when control plane data is received,
      *  like socket event, for example.
@@ -350,14 +348,6 @@ protected: // Device specific implementations might need these so protected
      */
     void validate_ip_address();
 
-    /** Converts the given pdp type in char format to enum pdp_type_t
-     *
-     *  @param pdp_type     pdp type in string format
-     *  @return             converted pdp_type_t enum
-     */
-    CellularContext::pdp_type_t string_to_pdp_type(const char *pdp_type);
-
-protected:
     // member variables needed in target override methods
     NetworkStack *_stack; // must be pointer because of PPP
     pdp_type_t _pdp_type;
@@ -372,6 +362,8 @@ protected:
     const char *_apn;
     const char *_uname;
     const char *_pwd;
+    PinName _dcd_pin;
+    bool _active_high;
 
     ControlPlane_netif *_cp_netif;
     uint16_t _retry_timeout_array[CELLULAR_RETRY_ARRAY_SIZE];

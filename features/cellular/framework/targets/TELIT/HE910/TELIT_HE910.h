@@ -29,6 +29,9 @@
 
 #include "AT_CellularDevice.h"
 
+//the delay between sending AT commands
+#define DEFAULT_DELAY_BETWEEN_AT_COMMANDS 20
+
 namespace mbed {
 
 class TELIT_HE910 : public AT_CellularDevice {
@@ -36,6 +39,7 @@ public:
     TELIT_HE910(FileHandle *fh);
 
 protected: // AT_CellularDevice
+    virtual uint16_t get_send_delay() const;
     virtual nsapi_error_t init();
 };
 } // namespace mbed

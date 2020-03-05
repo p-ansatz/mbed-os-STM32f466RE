@@ -19,7 +19,6 @@
 #include <stdbool.h>
 #include "tfm_svcalls.h"
 #endif
-#include "platform/mbed_toolchain.h"
 
 /* This SVC handler is called when a secure partition requests access to a
  * buffer area
@@ -136,7 +135,7 @@ __attribute__((naked)) void SVC_Handler(void)
 #error "Unsupported ARM Architecture."
 #endif
 
-MBED_USED uint32_t SVCHandler_main(uint32_t *svc_args, uint32_t lr)
+uint32_t SVCHandler_main(uint32_t *svc_args, uint32_t lr)
 {
     uint8_t svc_number;
     /*

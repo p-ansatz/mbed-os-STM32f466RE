@@ -9,8 +9,7 @@
         "CMD_TIMEOUT": 10000,
         "CMD0_IDLE_STATE_RETRIES": 5,
         "INIT_FREQUENCY": 100000,
-        "TRX_FREQUENCY": 1000000,
-        "CRC_ENABLED": 0,
+        "CRC_ENABLED": 1,
         "TEST_BUFFER": 8192
     },
     "target_overrides": {

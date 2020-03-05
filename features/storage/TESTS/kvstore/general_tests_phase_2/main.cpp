@@ -28,7 +28,6 @@
 #include "unity/unity.h"
 #include "utest/utest.h"
 #include "FileSystemStore.h"
-#include "DeviceKey.h"
 
 using namespace utest::v1;
 using namespace mbed;
@@ -69,34 +68,18 @@ static int kv_setup = TDBStoreSet;
 
 static const int heap_alloc_threshold_size = 4096;
 
-static inline uint32_t align_up(uint32_t val, uint32_t size)
-{
-    return (((val - 1) / size) + 1) * size;
-}
-
 /*----------------initialization------------------*/
 
 //init the blockdevice
 static void kvstore_init()
 {
-    // This directly corresponds to the pages allocated for each of the SecureStore block devices
-    // For the others it may not match exactly to the space that is used, but it is expected to
-    // be a close enough approximation to act as a guideline for how much of the block device we
-    // need to erase in order to ensure a stable initial condition.
-    const size_t PAGES_ESTIMATE = 40;
-
     int res;
-    size_t program_size, erase_size, ul_bd_size, rbp_bd_size;
+    size_t erase_size, ul_bd_size, rbp_bd_size;
     BlockDevice *sec_bd;
 
     res = bd->init();
     TEST_ASSERT_EQUAL_ERROR_CODE(0, res);
     int erase_val = bd->get_erase_value();
-    // Clear out any stale data that might be left from a previous test
-    // Multiply by 2 because SecureStore requires two underlying block devices of this size
-    size_t bytes_to_erase = align_up(2 * PAGES_ESTIMATE * bd->get_program_size(), bd->get_erase_size());
-
-    bd->erase(0, bytes_to_erase);
     res = bd->deinit();
     TEST_ASSERT_EQUAL_ERROR_CODE(0, res);
 
@@ -126,18 +109,10 @@ static void kvstore_init()
             flash_bd = new FlashSimBlockDevice(bd);
             sec_bd = flash_bd;
         }
-        res = sec_bd->init();
-        TEST_ASSERT_EQUAL_ERROR_CODE(MBED_SUCCESS, res);
 
-        program_size  = sec_bd->get_program_size();
-        erase_size = sec_bd->get_erase_size();
-        // We must be able to hold at least 10 small keys (20 program sectors) and master record + internal data
-        // but minimum of 2 erase sectors, so that the garbage collection way work
-        ul_bd_size  = align_up(program_size * PAGES_ESTIMATE, erase_size * 2);
-        rbp_bd_size = align_up(program_size * PAGES_ESTIMATE, erase_size * 2);
-
-        res = sec_bd->deinit();
-        TEST_ASSERT_EQUAL_ERROR_CODE(MBED_SUCCESS, res);
+        erase_size  = sec_bd->get_erase_size();
+        ul_bd_size  = erase_size * 4;
+        rbp_bd_size = erase_size * 2;
 
         ul_bd = new SlicingBlockDevice(sec_bd, 0, ul_bd_size);
         rbp_bd = new SlicingBlockDevice(sec_bd, ul_bd_size, ul_bd_size + rbp_bd_size);
@@ -885,11 +860,8 @@ int main()
         }
     }
 
-#if DEVICEKEY_ENABLED
-    DeviceKey::get_instance().generate_root_of_trust();
-#endif
     Specification specification(greentea_test_setup, cases, total_num_cases,
-                                greentea_test_teardown_handler, default_handler);
+                                greentea_test_teardown_handler, (test_failure_handler_t)greentea_failure_handler);
 
     return !Harness::run(specification);
 }

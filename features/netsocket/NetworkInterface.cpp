@@ -37,6 +37,11 @@ nsapi_error_t NetworkInterface::get_ip_address(SocketAddress *)
     return NSAPI_ERROR_UNSUPPORTED;
 }
 
+const char *NetworkInterface::get_ip_address()
+{
+    return nullptr;
+}
+
 nsapi_error_t NetworkInterface::get_ipv6_link_local_address(SocketAddress *address)
 {
     return NSAPI_ERROR_UNSUPPORTED;
@@ -47,14 +52,29 @@ nsapi_error_t NetworkInterface::get_netmask(SocketAddress *)
     return NSAPI_ERROR_UNSUPPORTED;
 }
 
+const char *NetworkInterface::get_netmask()
+{
+    return nullptr;
+}
+
 nsapi_error_t NetworkInterface::get_gateway(SocketAddress *)
 {
     return NSAPI_ERROR_UNSUPPORTED;
 }
 
+const char *NetworkInterface::get_gateway()
+{
+    return nullptr;
+}
+
 char *NetworkInterface::get_interface_name(char *interface_name)
 {
     return 0;
+}
+
+nsapi_error_t NetworkInterface::set_network(const char *ip_address, const char *netmask, const char *gateway)
+{
+    return NSAPI_ERROR_UNSUPPORTED;
 }
 
 nsapi_error_t NetworkInterface::set_network(const SocketAddress &ip_address, const SocketAddress &netmask, const SocketAddress &gateway)
@@ -76,19 +96,9 @@ nsapi_error_t NetworkInterface::gethostbyname(const char *name, SocketAddress *a
     return get_stack()->gethostbyname(name, address, version, interface_name);
 }
 
-nsapi_value_or_error_t NetworkInterface::getaddrinfo(const char *hostname, SocketAddress *hints, SocketAddress **res, const char *interface_name)
-{
-    return get_stack()->getaddrinfo(hostname, hints, res, interface_name);
-}
-
 nsapi_value_or_error_t NetworkInterface::gethostbyname_async(const char *host, hostbyname_cb_t callback, nsapi_version_t version, const char *interface_name)
 {
     return get_stack()->gethostbyname_async(host, callback, version, interface_name);
-}
-
-nsapi_value_or_error_t NetworkInterface::getaddrinfo_async(const char *hostname, SocketAddress *hints, hostbyname_cb_t callback, const char *interface_name)
-{
-    return get_stack()->getaddrinfo_async(hostname, hints, callback, interface_name);
 }
 
 nsapi_error_t NetworkInterface::gethostbyname_async_cancel(int id)

@@ -280,10 +280,7 @@ class _ArmccParser(_Parser):
         """  # noqa: E501
         test_re = re.match(self.RE, line)
 
-        if (
-            test_re
-            and "ARM_LIB_HEAP" not in line
-            ):
+        if test_re:
             size = int(test_re.group(2), 16)
 
             if test_re.group(4) == 'RO':

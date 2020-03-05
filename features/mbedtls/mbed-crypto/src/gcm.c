@@ -39,7 +39,6 @@
 
 #include "mbedtls/gcm.h"
 #include "mbedtls/platform_util.h"
-#include "mbedtls/error.h"
 
 #include <string.h>
 
@@ -169,7 +168,7 @@ int mbedtls_gcm_setkey( mbedtls_gcm_context *ctx,
                         const unsigned char *key,
                         unsigned int keybits )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     const mbedtls_cipher_info_t *cipher_info;
 
     GCM_VALIDATE_RET( ctx != NULL );
@@ -281,7 +280,7 @@ int mbedtls_gcm_starts( mbedtls_gcm_context *ctx,
                 const unsigned char *add,
                 size_t add_len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     unsigned char work_buf[16];
     size_t i;
     const unsigned char *p;
@@ -366,7 +365,7 @@ int mbedtls_gcm_update( mbedtls_gcm_context *ctx,
                 const unsigned char *input,
                 unsigned char *output )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     unsigned char ectr[16];
     size_t i;
     const unsigned char *p;
@@ -477,7 +476,7 @@ int mbedtls_gcm_crypt_and_tag( mbedtls_gcm_context *ctx,
                        size_t tag_len,
                        unsigned char *tag )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
 
     GCM_VALIDATE_RET( ctx != NULL );
     GCM_VALIDATE_RET( iv != NULL );
@@ -509,7 +508,7 @@ int mbedtls_gcm_auth_decrypt( mbedtls_gcm_context *ctx,
                       const unsigned char *input,
                       unsigned char *output )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     unsigned char check_tag[16];
     size_t i;
     int diff;

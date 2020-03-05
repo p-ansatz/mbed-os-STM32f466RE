@@ -29,6 +29,28 @@
  */
 class InternetDatagramSocket : public InternetSocket {
 public:
+
+    /** Send data to the specified host and port.
+     *
+     *  By default, sendto blocks until data is sent. If socket is set to
+     *  nonblocking or times out, NSAPI_ERROR_WOULD_BLOCK is returned
+     *  immediately.
+     *
+     *  @param host     Domain name of the remote host or a dotted notation IP address.
+     *  @param port     Port of the remote host.
+     *  @param data     Buffer of data to send to the host.
+     *  @param size     Size of the buffer in bytes.
+     *  @retval         int Number of sent bytes on success.
+     *  @retval         NSAPI_ERROR_NO_SOCKET in case socket was not created correctly.
+     *  @retval         NSAPI_ERROR_WOULD_BLOCK in case non-blocking mode is enabled
+     *                  and send cannot be performed immediately.
+     *  @retval         int Other negative error codes for stack-related failures.
+     *                  See @ref NetworkStack::socket_send.
+     */
+    MBED_DEPRECATED_SINCE("mbed-os-5.15", "String-based APIs are deprecated")
+    virtual nsapi_size_or_error_t sendto(const char *host, uint16_t port,
+                                         const void *data, nsapi_size_t size);
+
     /** Send data to the specified address.
      *
      *  By default, sendto blocks until data is sent. If socket is set to
@@ -38,14 +60,16 @@ public:
      *  @param address  The SocketAddress of the remote host.
      *  @param data     Buffer of data to send to the host.
      *  @param size     Size of the buffer in bytes.
+     *  @retval         NSAPI_ERROR_DNS_FAILURE in case the address parameter cannot
+     *                  be resolved.
      *  @retval         NSAPI_ERROR_NO_SOCKET in case socket was not created correctly.
      *  @retval         NSAPI_ERROR_WOULD_BLOCK in case non-blocking mode is enabled
      *                  and send cannot be performed immediately.
      *  @retval         int Other negative error codes for stack-related failures.
      *                  See \ref NetworkStack::socket_send.
      */
-    nsapi_size_or_error_t sendto(const SocketAddress &address,
-                                 const void *data, nsapi_size_t size) override;
+    virtual nsapi_size_or_error_t sendto(const SocketAddress &address,
+                                         const void *data, nsapi_size_t size);
 
     /** Receive a datagram and store the source address in address if it's not NULL.
      *
@@ -70,8 +94,8 @@ public:
      *  @retval         int Other negative error codes for stack-related failures.
      *                  See \ref NetworkStack::socket_recv.
      */
-    nsapi_size_or_error_t recvfrom(SocketAddress *address,
-                                   void *data, nsapi_size_t size) override;
+    virtual nsapi_size_or_error_t recvfrom(SocketAddress *address,
+                                           void *data, nsapi_size_t size);
 
     /** Set the remote address for next send() call and filtering
      *  of incoming packets. To reset the address, zero initialized
@@ -80,7 +104,7 @@ public:
      *  @param address  The SocketAddress of the remote host.
      *  @return         NSAPI_ERROR_OK on success.
      */
-    nsapi_error_t connect(const SocketAddress &address) override;
+    virtual nsapi_error_t connect(const SocketAddress &address);
 
     /** Send a raw data to connected remote address.
      *
@@ -96,11 +120,10 @@ public:
      *  @retval         NSAPI_ERROR_NO_SOCKET in case socket was not created correctly.
      *  @retval         NSAPI_ERROR_WOULD_BLOCK in case non-blocking mode is enabled
      *                  and send cannot be performed immediately.
-     *  #retval         NSAPI_ERROR_NO_ADDRESS if the address was not set with connect().
      *  @retval         int Other negative error codes for stack-related failures.
      *                  See \ref NetworkStack::socket_send.
      */
-    nsapi_size_or_error_t send(const void *data, nsapi_size_t size) override;
+    virtual nsapi_size_or_error_t send(const void *data, nsapi_size_t size);
 
     /** Receive data from a socket.
      *
@@ -121,21 +144,21 @@ public:
      *  @retval         int Other negative error codes for stack-related failures.
      *                  See \ref NetworkStack::socket_recv.
      */
-    nsapi_size_or_error_t recv(void *data, nsapi_size_t size) override;
+    virtual nsapi_size_or_error_t recv(void *data, nsapi_size_t size);
 
     /** Not implemented for InternetDatagramSocket.
      *
      *  @param error      Not used.
      *  @return           NSAPI_ERROR_UNSUPPORTED
      */
-    Socket *accept(nsapi_error_t *error = nullptr) override;
+    virtual Socket *accept(nsapi_error_t *error = NULL);
 
     /** Not implemented for InternetDatagramSocket.
      *
      *  @param backlog    Not used.
      *  @return           NSAPI_ERROR_UNSUPPORTED
      */
-    nsapi_error_t listen(int backlog = 1) override;
+    virtual nsapi_error_t listen(int backlog = 1);
 #if !defined(DOXYGEN_ONLY)
 
 protected:

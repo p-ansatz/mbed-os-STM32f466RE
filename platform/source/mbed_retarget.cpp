@@ -30,7 +30,7 @@
 #include "platform/mbed_atomic.h"
 #include "platform/mbed_critical.h"
 #include "platform/mbed_poll.h"
-#include "drivers/BufferedSerial.h"
+#include "drivers/UARTSerial.h"
 #include "hal/us_ticker_api.h"
 #include "hal/lp_ticker_api.h"
 #include "hal/static_pinmap.h"
@@ -150,7 +150,7 @@ extern serial_t stdio_uart;
 /* Private FileHandle to implement backwards-compatible functionality of
  * direct HAL serial access for default stdin/stdout/stderr.
  * This is not a particularly well-behaved FileHandle for a stream, which
- * is why it's not public. People should be using BufferedSerial.
+ * is why it's not public. People should be using UARTSerial.
  */
 class DirectSerial : public FileHandle {
 public:
@@ -257,18 +257,14 @@ static void do_serial_init()
         return;
     }
 
-    static const serial_pinmap_t console_pinmap = get_uart_pinmap(STDIO_UART_TX, STDIO_UART_RX);
-    serial_init_direct(&stdio_uart, &console_pinmap);
+    serial_init(&stdio_uart, STDIO_UART_TX, STDIO_UART_RX);
     serial_baud(&stdio_uart, MBED_CONF_PLATFORM_STDIO_BAUD_RATE);
 #if   CONSOLE_FLOWCONTROL == CONSOLE_FLOWCONTROL_RTS
-    static const serial_fc_pinmap_t fc_pinmap = get_uart_fc_pinmap(STDIO_UART_RTS, NC);
-    serial_set_flow_control_direct(&stdio_uart, FlowControlRTS, &fc_pinmap);
+    serial_set_flow_control(&stdio_uart, FlowControlRTS, STDIO_UART_RTS, NC);
 #elif CONSOLE_FLOWCONTROL == CONSOLE_FLOWCONTROL_CTS
-    static const serial_fc_pinmap_t fc_pinmap = get_uart_fc_pinmap(NC, STDIO_UART_CTS);
-    serial_set_flow_control_direct(&stdio_uart, FlowControlCTS, &fc_pinmap);
+    serial_set_flow_control(&stdio_uart, FlowControlCTS, NC, STDIO_UART_CTS);
 #elif CONSOLE_FLOWCONTROL == CONSOLE_FLOWCONTROL_RTSCTS
-    static const serial_fc_pinmap_t fc_pinmap = get_uart_fc_pinmap(STDIO_UART_RTS, STDIO_UART_CTS);
-    serial_set_flow_control_direct(&stdio_uart, FlowControlRTSCTS, &fc_pinmap);
+    serial_set_flow_control(&stdio_uart, FlowControlRTSCTS, STDIO_UART_RTS, STDIO_UART_CTS);
 #endif
 }
 
@@ -337,7 +333,7 @@ static FileHandle *default_console()
 
 #  if MBED_CONF_PLATFORM_STDIO_BUFFERED_SERIAL
     static const serial_pinmap_t console_pinmap = get_uart_pinmap(STDIO_UART_TX, STDIO_UART_RX);
-    static BufferedSerial console(console_pinmap, MBED_CONF_PLATFORM_STDIO_BAUD_RATE);
+    static UARTSerial console(console_pinmap, MBED_CONF_PLATFORM_STDIO_BAUD_RATE);
 #   if   CONSOLE_FLOWCONTROL == CONSOLE_FLOWCONTROL_RTS
     static const serial_fc_pinmap_t fc_pinmap = get_uart_fc_pinmap(STDIO_UART_RTS, NC);
     console.serial_set_flow_control(SerialBase::RTS, fc_pinmap);
@@ -561,6 +557,23 @@ std::FILE *fdopen(FileHandle *fh, const char *mode)
 extern "C" FILEHANDLE PREFIX(_open)(const char *name, int openflags)
 {
 #if defined(__MICROLIB) && (__ARMCC_VERSION>5030000)
+#if !defined(MBED_CONF_RTOS_PRESENT)
+    // valid only for mbed 2
+    // for ulib, this is invoked after RAM init, prior c++
+    // used as hook, as post stack/heap is not active there
+    extern void mbed_copy_nvic(void);
+    extern void mbed_sdk_init(void);
+
+    static int mbed_sdk_inited = 0;
+    if (!mbed_sdk_inited) {
+        mbed_copy_nvic();
+        mbed_sdk_init();
+#if DEVICE_USTICKER && MBED_CONF_TARGET_INIT_US_TICKER_AT_BOOT
+        us_ticker_init();
+#endif
+        mbed_sdk_inited = 1;
+    }
+#endif
     // Before version 5.03, we were using a patched version of microlib with proper names
     // This is the workaround that the microlib author suggested us
     static int n = 0;
@@ -1141,7 +1154,7 @@ extern "C" __value_in_regs struct __argc_argv $Sub$$__rt_lib_init(unsigned heapb
 }
 #endif
 
-MBED_USED extern "C" __value_in_regs struct __initial_stackheap __user_setup_stackheap(uint32_t R0, uint32_t R1, uint32_t R2, uint32_t R3)
+extern "C" __value_in_regs struct __initial_stackheap __user_setup_stackheap(uint32_t R0, uint32_t R1, uint32_t R2, uint32_t R3)
 {
     return _mbed_user_setup_stackheap(R0, R1, R2, R3);
 }
@@ -1555,14 +1568,6 @@ extern "C" {
 
 } // end of extern "C"
 
-#if defined(__MICROLIB)
-extern "C" {
-    MBED_WEAK void __aeabi_assert(const char *expr, const char *file, int line)
-    {
-        mbed_assert_internal(expr, file, line);
-    }
-} // end of extern "C"
-#endif
 #endif
 
 

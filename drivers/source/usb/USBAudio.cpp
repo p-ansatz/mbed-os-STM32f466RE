@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#include <stdint.h>
-#include <string.h>
+#include "stdint.h"
 #include "USBAudio.h"
 #include "USBAudio_Types.h"
 #include "EndpointResolver.h"

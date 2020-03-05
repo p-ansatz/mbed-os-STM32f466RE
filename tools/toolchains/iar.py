@@ -1,7 +1,6 @@
 """
 mbed SDK
 Copyright (c) 2011-2013 ARM Limited
-SPDX-License-Identifier: Apache-2.0
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,6 +21,7 @@ from distutils.version import LooseVersion
 
 from tools.toolchains.mbed_toolchain import mbedToolchain, TOOLCHAIN_PATHS
 from tools.utils import run_cmd
+
 
 class IAR(mbedToolchain):
     OFFICIALLY_SUPPORTED = True
@@ -44,7 +44,7 @@ class IAR(mbedToolchain):
         )
 
     def __init__(self, target, notify=None, macros=None, build_profile=None,
-                 build_dir=None, coverage_patterns=None):
+                 build_dir=None):
         mbedToolchain.__init__(
             self,
             target,
@@ -53,8 +53,6 @@ class IAR(mbedToolchain):
             build_dir=build_dir,
             build_profile=build_profile
         )
-
-        self.check_c_lib_supported(target, "iar")
 
         if target.is_TrustZone_secure_target:
             # Enable compiler security extensions
@@ -70,8 +68,6 @@ class IAR(mbedToolchain):
             # in mbedToolchain.get_symbols)
             define_string = self.make_ld_define("DOMAIN_NS", "0x1")
             self.flags["ld"].append(define_string)
-
-        self.check_and_add_minimal_printf(target)
 
         core = target.core_without_NS
         cpu = {

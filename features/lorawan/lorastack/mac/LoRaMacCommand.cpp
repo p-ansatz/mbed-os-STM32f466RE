@@ -22,7 +22,6 @@ Copyright (c) 2017, Arm Limited and affiliates.
 SPDX-License-Identifier: BSD-3-Clause
 */
 
-#include <string.h>
 #include "LoRaMacCommand.h"
 #include "LoRaMac.h"
 

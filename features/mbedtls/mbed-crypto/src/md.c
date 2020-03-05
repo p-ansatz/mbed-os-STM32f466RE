@@ -34,7 +34,6 @@
 #include "mbedtls/md.h"
 #include "mbedtls/md_internal.h"
 #include "mbedtls/platform_util.h"
-#include "mbedtls/error.h"
 
 #include "mbedtls/md2.h"
 #include "mbedtls/md4.h"
@@ -644,7 +643,7 @@ int mbedtls_md( const mbedtls_md_info_t *md_info, const unsigned char *input, si
 #if defined(MBEDTLS_FS_IO)
 int mbedtls_md_file( const mbedtls_md_info_t *md_info, const char *path, unsigned char *output )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     FILE *f;
     size_t n;
     mbedtls_md_context_t ctx;
@@ -684,7 +683,7 @@ cleanup:
 
 int mbedtls_md_hmac_starts( mbedtls_md_context_t *ctx, const unsigned char *key, size_t keylen )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     unsigned char sum[MBEDTLS_MD_MAX_SIZE];
     unsigned char *ipad, *opad;
     size_t i;
@@ -739,7 +738,7 @@ int mbedtls_md_hmac_update( mbedtls_md_context_t *ctx, const unsigned char *inpu
 
 int mbedtls_md_hmac_finish( mbedtls_md_context_t *ctx, unsigned char *output )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     unsigned char tmp[MBEDTLS_MD_MAX_SIZE];
     unsigned char *opad;
 
@@ -763,7 +762,7 @@ int mbedtls_md_hmac_finish( mbedtls_md_context_t *ctx, unsigned char *output )
 
 int mbedtls_md_hmac_reset( mbedtls_md_context_t *ctx )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     unsigned char *ipad;
 
     if( ctx == NULL || ctx->md_info == NULL || ctx->hmac_ctx == NULL )
@@ -782,7 +781,7 @@ int mbedtls_md_hmac( const mbedtls_md_info_t *md_info,
                      unsigned char *output )
 {
     mbedtls_md_context_t ctx;
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
 
     if( md_info == NULL )
         return( MBEDTLS_ERR_MD_BAD_INPUT_DATA );

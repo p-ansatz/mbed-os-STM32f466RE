@@ -12,10 +12,10 @@ Supports:
 * %u: unsigned integer [h, hh, (none), l, ll, z, j, t].
 * %x: unsigned integer [h, hh, (none), l, ll, z, j, t], printed as hexadecimal number (e.g., ff).
 * %X: unsigned integer [h, hh, (none), l, ll, z, j, t], printed as hexadecimal number (e.g., FF).
-* %f: floating point (disabled by default).
-* %F: floating point (disabled by default, treated as %f).
-* %g: floating point (disabled by default, treated as %f).
-* %G: floating point (disabled by default, treated as %f).
+* %f: floating point (enabled by default).
+* %F: floating point (enabled by default, treated as %f).
+* %g: floating point (enabled by default, treated as %f).
+* %G: floating point (enabled by default, treated as %f).
 * %c: character.
 * %s: string.
 * %p: pointer (e.g. 0x00123456).
@@ -25,24 +25,6 @@ Unrecognized format specifiers are treated as ordinary characters.
 Floating point limitations:
 * All floating points are treated as %f.
 * No support for inf, infinity or nan
-
-## Usage
-
-
-To replace the standard implementation of the printf functions with the ones in this library:
-
-Modify your application configuration file to override the parameter `target.printf_lib` with the value `minimal-printf` as shown below:
-
-```json
-{
-    "target_overrides": {
-        "*": {
-            "target.printf_lib": "minimal-printf"
-        }
-    }
-}
-```
-
 
 ## Configuration
 
@@ -78,12 +60,22 @@ In mbed_app.json:
 ```json
     "target_overrides": {
         "*": {
-            "target.printf_lib": "minimal-printf",
             "platform.minimal-printf-enable-floating-point": false,
             "platform.minimal-printf-set-floating-point-max-decimals": 6,
             "platform.minimal-printf-enable-64-bit": false
         }
     }
+```
+
+## Usage
+
+
+To replace the standard implementation of the printf functions with the ones in this library:
+
+Compile with mbed-cli using the custom `minimal-printf` profile. For example, to compile in release mode:
+
+```
+$ mbed compile -t <toolchain> -m <target> --profile release --profile mbed-os/tools/profiles/extensions/minimal-printf.json
 ```
 
 ## Size comparison

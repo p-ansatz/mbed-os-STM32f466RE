@@ -23,11 +23,19 @@
  *
  * Configure Nanostack to use Thread protocol.
  */
-class ThreadInterface final : public MeshInterfaceNanostack {
+class ThreadInterface : public MeshInterfaceNanostack {
 public:
 
-    /** Inherit MeshInterfaceNanostack constructors */
-    using MeshInterfaceNanostack::MeshInterfaceNanostack;
+    /** Create an uninitialized ThreadInterface
+     *
+     *  Must initialize to initialize the mesh on a phy.
+     */
+    ThreadInterface() { }
+
+    /** Create an initialized ThreadInterface
+     *
+     */
+    ThreadInterface(NanostackRfPhy *phy) : MeshInterfaceNanostack(phy) { }
 
     /**
      * \brief Sets the eui64 for the device configuration.
@@ -56,7 +64,7 @@ public:
 
 protected:
     Nanostack::ThreadInterface *get_interface() const;
-    nsapi_error_t do_initialize() override;
+    virtual nsapi_error_t do_initialize();
 };
 
 #endif // THREADINTERFACE_H

@@ -35,7 +35,6 @@
 
 #include "mbedtls/md4.h"
 #include "mbedtls/platform_util.h"
-#include "mbedtls/error.h"
 
 #include <string.h>
 
@@ -254,7 +253,7 @@ int mbedtls_md4_update_ret( mbedtls_md4_context *ctx,
                             const unsigned char *input,
                             size_t ilen )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t fill;
     uint32_t left;
 
@@ -324,7 +323,7 @@ static const unsigned char md4_padding[64] =
 int mbedtls_md4_finish_ret( mbedtls_md4_context *ctx,
                             unsigned char output[16] )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     uint32_t last, padn;
     uint32_t high, low;
     unsigned char msglen[8];
@@ -372,7 +371,7 @@ int mbedtls_md4_ret( const unsigned char *input,
                      size_t ilen,
                      unsigned char output[16] )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     mbedtls_md4_context ctx;
 
     mbedtls_md4_init( &ctx );

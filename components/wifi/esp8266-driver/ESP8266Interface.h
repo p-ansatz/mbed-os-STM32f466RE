@@ -1,6 +1,5 @@
 /* ESP8266 implementation of NetworkInterfaceAPI
  * Copyright (c) 2015 ARM Limited
- * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +17,7 @@
 #ifndef ESP8266_INTERFACE_H
 #define ESP8266_INTERFACE_H
 
-#if DEVICE_SERIAL && DEVICE_INTERRUPTIN && defined(MBED_CONF_EVENTS_PRESENT) && defined(MBED_CONF_NSAPI_PRESENT) && defined(MBED_CONF_RTOS_API_PRESENT)
+#if DEVICE_SERIAL && DEVICE_INTERRUPTIN && defined(MBED_CONF_EVENTS_PRESENT) && defined(MBED_CONF_NSAPI_PRESENT) && defined(MBED_CONF_RTOS_PRESENT)
 #include "drivers/DigitalOut.h"
 #include "drivers/Timer.h"
 #include "ESP8266/ESP8266.h"
@@ -31,9 +30,7 @@
 #include "features/netsocket/WiFiAccessPoint.h"
 #include "features/netsocket/WiFiInterface.h"
 #include "platform/Callback.h"
-#if MBED_CONF_RTOS_PRESENT
 #include "rtos/ConditionVariable.h"
-#endif
 #include "rtos/Mutex.h"
 
 #define ESP8266_SOCKET_COUNT 5
@@ -142,6 +139,9 @@ public:
      */
     virtual nsapi_error_t get_ip_address(SocketAddress *address);
 
+    MBED_DEPRECATED_SINCE("mbed-os-5.15", "String-based APIs are deprecated")
+    virtual const char *get_ip_address();
+
     /** Get the internally stored MAC address
      *  @return             MAC address of the interface
      */
@@ -226,25 +226,14 @@ public:
      *                  version is chosen by the stack (defaults to NSAPI_UNSPEC)
      *  @return         0 on success, negative error code on failure
      */
-#if MBED_CONF_ESP8266_BUILT_IN_DNS
-    nsapi_error_t gethostbyname(const char *name, SocketAddress *address, nsapi_version_t version, const char *interface_name);
-#else
     using NetworkInterface::gethostbyname;
-#endif
-
-    using NetworkInterface::gethostbyname_async;
-    using NetworkInterface::gethostbyname_async_cancel;
 
     /** Add a domain name server to list of servers to query
      *
      *  @param addr     Destination for the host address
      *  @return         0 on success, negative error code on failure
      */
-#if MBED_CONF_ESP8266_BUILT_IN_DNS
-    nsapi_error_t add_dns_server(const SocketAddress &address, const char *interface_name);
-#else
     using NetworkInterface::add_dns_server;
-#endif
 
     /** @copydoc NetworkStack::setsockopt
      */
@@ -463,9 +452,7 @@ private:
     struct _channel_info _ch_info;
 
     bool _if_blocking; // NetworkInterface, blocking or not
-#if MBED_CONF_RTOS_PRESENT
     rtos::ConditionVariable _if_connected;
-#endif
 
     // connect status reporting
     nsapi_error_t _conn_status_to_error();

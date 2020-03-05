@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#include <stdint.h>
-#include <string.h>
+#include "stdint.h"
 #include "USBMouse.h"
 #include "ThisThread.h"
 #include "usb_phy_api.h"

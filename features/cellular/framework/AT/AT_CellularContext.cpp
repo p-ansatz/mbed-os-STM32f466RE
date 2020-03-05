@@ -19,11 +19,10 @@
 #include "AT_CellularContext.h"
 #include "AT_CellularNetwork.h"
 #include "AT_CellularStack.h"
-#include "AT_ControlPlane_netif.h"
 #include "AT_CellularDevice.h"
 #include "CellularLog.h"
 #if (DEVICE_SERIAL && DEVICE_INTERRUPTIN) || defined(DOXYGEN_ONLY)
-#include "drivers/BufferedSerial.h"
+#include "UARTSerial.h"
 #endif // #if DEVICE_SERIAL
 #include "ThisThread.h"
 
@@ -37,17 +36,19 @@
 #include "nsapi_ppp.h"
 #endif
 
-#if MBED_CONF_CELLULAR_USE_APN_LOOKUP
+#define USE_APN_LOOKUP (MBED_CONF_CELLULAR_USE_APN_LOOKUP || (NSAPI_PPP_AVAILABLE && MBED_CONF_PPP_CELL_IFACE_APN_LOOKUP))
+
+#if USE_APN_LOOKUP
 #include "CellularInformation.h"
 #include "APN_db.h"
-#endif //MBED_CONF_CELLULAR_USE_APN_LOOKUP
+#endif //USE_APN_LOOKUP
 
 using namespace mbed_cellular_util;
 using namespace mbed;
 using namespace rtos;
 
 AT_CellularContext::AT_CellularContext(ATHandler &at, CellularDevice *device, const char *apn, bool cp_req, bool nonip_req) :
-    _current_op(OP_INVALID), _dcd_pin(NC), _active_high(false), _cp_req(cp_req), _is_connected(false), _at(at)
+    AT_CellularBase(at), _current_op(OP_INVALID), _fh(0), _cp_req(cp_req), _is_connected(false)
 {
     tr_info("New CellularContext %s (%p)", apn ? apn : "", this);
     _nonip_req = nonip_req;
@@ -71,13 +72,22 @@ AT_CellularContext::~AT_CellularContext()
     }
 }
 
-#if (DEVICE_SERIAL && DEVICE_INTERRUPTIN) || defined(DOXYGEN_ONLY)
-nsapi_error_t AT_CellularContext::configure_hup(PinName dcd_pin, bool active_high)
+void AT_CellularContext::set_file_handle(FileHandle *fh)
 {
+    tr_info("CellularContext filehandle %p", fh);
+    _fh = fh;
+    _at.set_file_handle(_fh);
+}
+
+#if (DEVICE_SERIAL && DEVICE_INTERRUPTIN) || defined(DOXYGEN_ONLY)
+void AT_CellularContext::set_file_handle(UARTSerial *serial, PinName dcd_pin, bool active_high)
+{
+    tr_info("CellularContext serial %p", serial);
     _dcd_pin = dcd_pin;
     _active_high = active_high;
+    _fh = serial;
+    _at.set_file_handle(static_cast<FileHandle *>(serial));
     enable_hup(false);
-    return NSAPI_ERROR_OK;
 }
 #endif // #if DEVICE_SERIAL
 
@@ -85,7 +95,7 @@ void AT_CellularContext::enable_hup(bool enable)
 {
     if (_dcd_pin != NC) {
 #if (DEVICE_SERIAL && DEVICE_INTERRUPTIN) || defined(DOXYGEN_ONLY)
-        static_cast<BufferedSerial *>(_at.get_file_handle())->set_data_carrier_detect(enable ? _dcd_pin : NC, _active_high);
+        static_cast<UARTSerial *>(_fh)->set_data_carrier_detect(enable ? _dcd_pin : NC, _active_high);
 #endif // #if DEVICE_SERIAL
     }
 }
@@ -204,6 +214,26 @@ NetworkStack *AT_CellularContext::get_stack()
     return _stack;
 }
 
+nsapi_error_t AT_CellularContext::get_netmask(SocketAddress *address)
+{
+    return NSAPI_ERROR_UNSUPPORTED;
+}
+
+const char *AT_CellularContext::get_netmask()
+{
+    return NULL;
+}
+
+nsapi_error_t AT_CellularContext::get_gateway(SocketAddress *address)
+{
+    return NSAPI_ERROR_UNSUPPORTED;
+}
+
+const char *AT_CellularContext::get_gateway()
+{
+    return NULL;
+}
+
 nsapi_error_t AT_CellularContext::get_ip_address(SocketAddress *address)
 {
     if (!address) {
@@ -221,6 +251,21 @@ nsapi_error_t AT_CellularContext::get_ip_address(SocketAddress *address)
         return NSAPI_ERROR_OK;
     }
     return NSAPI_ERROR_NO_CONNECTION;
+#endif
+}
+
+const char *AT_CellularContext::get_ip_address()
+{
+#if NSAPI_PPP_AVAILABLE
+    return nsapi_ppp_get_ip_addr(_at.get_file_handle());
+#else
+    if (!_stack) {
+        _stack = get_stack();
+    }
+    if (_stack) {
+        return _stack->get_ip_address();
+    }
+    return NULL;
 #endif
 }
 
@@ -279,9 +324,6 @@ void AT_CellularContext::set_credentials(const char *apn, const char *uname, con
 // PDP Context handling
 void AT_CellularContext::delete_current_context()
 {
-    if (_cid <= 0) {
-        return;
-    }
     tr_info("Delete context %d", _cid);
     _at.clear_error();
 
@@ -300,7 +342,7 @@ nsapi_error_t AT_CellularContext::do_user_authentication()
 {
     // if user has defined user name and password we need to call CGAUTH before activating or modifying context
     if (_pwd && _uname) {
-        if (!get_device()->get_property(AT_CellularDevice::PROPERTY_AT_CGAUTH)) {
+        if (!get_property(PROPERTY_AT_CGAUTH)) {
             return NSAPI_ERROR_UNSUPPORTED;
         }
         const bool stored_debug_state = _at.get_debug();
@@ -318,15 +360,15 @@ nsapi_error_t AT_CellularContext::do_user_authentication()
     return NSAPI_ERROR_OK;
 }
 
-AT_CellularDevice::CellularProperty AT_CellularContext::pdp_type_t_to_cellular_property(pdp_type_t pdp_type)
+AT_CellularBase::CellularProperty AT_CellularContext::pdp_type_t_to_cellular_property(pdp_type_t pdp_type)
 {
-    AT_CellularDevice::CellularProperty prop = AT_CellularDevice::PROPERTY_IPV4_PDP_TYPE;
+    AT_CellularBase::CellularProperty prop = PROPERTY_IPV4_PDP_TYPE;
     if (pdp_type == IPV6_PDP_TYPE) {
-        prop = AT_CellularDevice::PROPERTY_IPV6_PDP_TYPE;
+        prop = PROPERTY_IPV6_PDP_TYPE;
     } else if (pdp_type == IPV4V6_PDP_TYPE) {
-        prop = AT_CellularDevice::PROPERTY_IPV4V6_PDP_TYPE;
+        prop = PROPERTY_IPV4V6_PDP_TYPE;
     } else if (pdp_type == NON_IP_PDP_TYPE) {
-        prop = AT_CellularDevice::PROPERTY_NON_IP_PDP_TYPE;
+        prop = PROPERTY_NON_IP_PDP_TYPE;
     }
 
     return prop;
@@ -352,18 +394,15 @@ bool AT_CellularContext::get_context()
             apn_len = _at.read_string(apn, sizeof(apn));
             if (apn_len >= 0) {
                 if (_apn && (strcmp(apn, _apn) != 0)) {
-                    tr_debug("CID %d APN \"%s\"", cid, apn);
                     continue;
                 }
 
                 // APN matched -> Check PDP type
                 pdp_type_t pdp_type = string_to_pdp_type(pdp_type_from_context);
-                tr_debug("CID %d APN \"%s\" pdp_type %u", cid, apn, pdp_type);
 
                 // Accept exact matching PDP context type or dual PDP context for modems that support both IPv4 and IPv6 stacks
-                if (get_device()->get_property(pdp_type_t_to_cellular_property(pdp_type)) ||
-                        ((pdp_type == IPV4V6_PDP_TYPE && (get_device()->get_property(AT_CellularDevice::PROPERTY_IPV4_PDP_TYPE) &&
-                                                          get_device()->get_property(AT_CellularDevice::PROPERTY_IPV6_PDP_TYPE))) && !_nonip_req)) {
+                if (get_property(pdp_type_t_to_cellular_property(pdp_type)) ||
+                        ((pdp_type == IPV4V6_PDP_TYPE && (get_property(PROPERTY_IPV4_PDP_TYPE) && get_property(PROPERTY_IPV6_PDP_TYPE))) && !_nonip_req)) {
                     _pdp_type = pdp_type;
                     set_cid(cid);
                 }
@@ -388,28 +427,21 @@ bool AT_CellularContext::get_context()
     return true;
 }
 
-const char *AT_CellularContext::get_nonip_context_type_str()
-{
-    return "Non-IP";
-}
-
 bool AT_CellularContext::set_new_context(int cid)
 {
     char pdp_type_str[8 + 1] = {0};
     pdp_type_t pdp_type = IPV4_PDP_TYPE;
 
-    if (_nonip_req && _cp_in_use && get_device()->get_property(AT_CellularDevice::PROPERTY_NON_IP_PDP_TYPE)) {
-        strncpy(pdp_type_str, get_nonip_context_type_str(), sizeof(pdp_type_str));
+    if (_nonip_req && _cp_in_use && get_property(PROPERTY_NON_IP_PDP_TYPE)) {
+        strncpy(pdp_type_str, "Non-IP", sizeof(pdp_type_str));
         pdp_type = NON_IP_PDP_TYPE;
-    } else if (get_device()->get_property(AT_CellularDevice::PROPERTY_IPV4V6_PDP_TYPE) ||
-               (get_device()->get_property(AT_CellularDevice::PROPERTY_IPV4_PDP_TYPE) &&
-                get_device()->get_property(AT_CellularDevice::PROPERTY_IPV6_PDP_TYPE))) {
+    } else if (get_property(PROPERTY_IPV4V6_PDP_TYPE) || (get_property(PROPERTY_IPV4_PDP_TYPE) && get_property(PROPERTY_IPV6_PDP_TYPE))) {
         strncpy(pdp_type_str, "IPV4V6", sizeof(pdp_type_str));
         pdp_type = IPV4V6_PDP_TYPE;
-    } else if (get_device()->get_property(AT_CellularDevice::PROPERTY_IPV6_PDP_TYPE)) {
+    } else if (get_property(PROPERTY_IPV6_PDP_TYPE)) {
         strncpy(pdp_type_str, "IPV6", sizeof(pdp_type_str));
         pdp_type = IPV6_PDP_TYPE;
-    } else if (get_device()->get_property(AT_CellularDevice::PROPERTY_IPV4_PDP_TYPE)) {
+    } else if (get_property(PROPERTY_IPV4_PDP_TYPE)) {
         strncpy(pdp_type_str, "IP", sizeof(pdp_type_str));
         pdp_type = IPV4_PDP_TYPE;
     } else {
@@ -453,26 +485,14 @@ nsapi_error_t AT_CellularContext::activate_ip_context()
             while (pdp) {
                 SocketAddress addr;
                 if (addr.set_ip_address(pdp->dns_secondary_addr)) {
-                    nsapi_addr_t taddr = addr.get_addr();
-                    for (int i = 0; i < ((taddr.version == NSAPI_IPv6) ? NSAPI_IPv6_BYTES : NSAPI_IPv4_BYTES); i++) {
-                        if (taddr.bytes[i] != 0) { // check the address is not all zero
-                            tr_info("DNS secondary %s", pdp->dns_secondary_addr);
-                            char ifn[5]; // "ce" + two digit _cid + zero
-                            add_dns_server(addr, get_interface_name(ifn));
-                            break;
-                        }
-                    }
+                    tr_info("DNS secondary %s", pdp->dns_secondary_addr);
+                    char ifn[5]; // "ce" + two digit _cid + zero
+                    add_dns_server(addr, get_interface_name(ifn));
                 }
                 if (addr.set_ip_address(pdp->dns_primary_addr)) {
-                    nsapi_addr_t taddr = addr.get_addr();
-                    for (int i = 0; i < ((taddr.version == NSAPI_IPv6) ? NSAPI_IPv6_BYTES : NSAPI_IPv4_BYTES); i++) {
-                        if (taddr.bytes[i] != 0) { // check the address is not all zero
-                            tr_info("DNS primary %s", pdp->dns_primary_addr);
-                            char ifn[5]; // "ce" + two digit _cid + zero
-                            add_dns_server(addr, get_interface_name(ifn));
-                            break;
-                        }
-                    }
+                    tr_info("DNS primary %s", pdp->dns_primary_addr);
+                    char ifn[5]; // "ce" + two digit _cid + zero
+                    add_dns_server(addr, get_interface_name(ifn));
                 }
                 pdp = pdp->next;
             }
@@ -517,25 +537,28 @@ nsapi_error_t AT_CellularContext::find_and_activate_context()
     }
 
     if (err != NSAPI_ERROR_OK) {
+        _at.unlock();
         tr_error("Failed to activate network context! (%d)", err);
-    } else if (!(_nonip_req && _cp_in_use) && !get_stack()) {
-        // do check for stack to validate that we have support for stack
+        return err;
+    }
+
+    // do check for stack to validate that we have support for stack
+    if (!get_stack()) {
+        _at.unlock();
         tr_error("No cellular stack!");
-        err = NSAPI_ERROR_UNSUPPORTED;
+        return NSAPI_ERROR_UNSUPPORTED;
     }
 
     _is_context_active = false;
     _is_context_activated = false;
 
-    if (err == NSAPI_ERROR_OK) {
-        _is_context_active = _nw->is_active_context(NULL, _cid);
+    _is_context_active = _nw->is_active_context(NULL, _cid);
 
-        if (!_is_context_active) {
-            activate_context();
-        }
-
-        err = (_at.get_last_error() == NSAPI_ERROR_OK) ? NSAPI_ERROR_OK : NSAPI_ERROR_NO_CONNECTION;
+    if (!_is_context_active) {
+        activate_context();
     }
+
+    err = (_at.get_last_error() == NSAPI_ERROR_OK) ? NSAPI_ERROR_OK : NSAPI_ERROR_NO_CONNECTION;
 
     // If new PDP context was created and failed to activate, delete it
     if (err != NSAPI_ERROR_OK && _new_context_set) {
@@ -592,7 +615,7 @@ nsapi_error_t AT_CellularContext::open_data_channel()
     }
 
     tr_info("CellularContext PPP connect");
-    if (get_device()->get_property(AT_CellularDevice::PROPERTY_AT_CGDATA)) {
+    if (get_property(PROPERTY_AT_CGDATA)) {
         _at.cmd_start_stop("+CGDATA", "=\"PPP\",", "%d", _cid);
     } else {
         MBED_ASSERT(_cid >= 0 && _cid <= 99);
@@ -891,7 +914,7 @@ void AT_CellularContext::cellular_callback(nsapi_event_t ev, intptr_t ptr)
                 _semaphore.release();
             }
         }
-#if MBED_CONF_CELLULAR_USE_APN_LOOKUP
+#if USE_APN_LOOKUP
         if (st == CellularSIMStatusChanged && data->status_data == CellularDevice::SimStateReady &&
                 _cb_data.error == NSAPI_ERROR_OK) {
             if (!_apn) {
@@ -909,6 +932,7 @@ void AT_CellularContext::cellular_callback(nsapi_event_t ev, intptr_t ptr)
                     }
                 } else {
                     tr_error("APN lookup failed");
+                    _device->stop();
                     if (_is_blocking) {
                         // operation failed, release semaphore
                         if (_current_op != OP_INVALID) {
@@ -919,13 +943,12 @@ void AT_CellularContext::cellular_callback(nsapi_event_t ev, intptr_t ptr)
                 _device->close_information();
             }
         }
-#endif // MBED_CONF_CELLULAR_USE_APN_LOOKUP
+#endif // USE_APN_LOOKUP
 
         if (!_nw && st == CellularDeviceReady && _cb_data.error == NSAPI_ERROR_OK) {
-            _nw = _device->open_network();
+            _nw = _device->open_network(_fh);
         }
 
-#if MBED_CONF_CELLULAR_CONTROL_PLANE_OPT
         if (_cp_req && !_cp_in_use && (_cb_data.error == NSAPI_ERROR_OK) &&
                 (st == CellularSIMStatusChanged && data->status_data == CellularDevice::SimStateReady)) {
             if (setup_control_plane_opt() != NSAPI_ERROR_OK) {
@@ -934,7 +957,6 @@ void AT_CellularContext::cellular_callback(nsapi_event_t ev, intptr_t ptr)
                 tr_info("Control plane SETUP success!");
             }
         }
-#endif
 
         if (_is_blocking) {
             if (_cb_data.error != NSAPI_ERROR_OK) {
@@ -985,9 +1007,7 @@ void AT_CellularContext::cellular_callback(nsapi_event_t ev, intptr_t ptr)
 #if NSAPI_PPP_AVAILABLE
         if (_is_blocking) {
             if (ev == NSAPI_EVENT_CONNECTION_STATUS_CHANGE && ptr == NSAPI_STATUS_GLOBAL_UP) {
-                SocketAddress addr;
-                get_ip_address(&addr);
-                tr_info("CellularContext IP %s", addr.get_ip_address());
+                tr_info("CellularContext IP %s", get_ip_address());
                 _cb_data.error = NSAPI_ERROR_OK;
             } else if (ev == NSAPI_EVENT_CONNECTION_STATUS_CHANGE && ptr == NSAPI_STATUS_DISCONNECTED) {
                 tr_info("cellular_callback: PPP mode and NSAPI_STATUS_DISCONNECTED");
@@ -1011,10 +1031,8 @@ void AT_CellularContext::cellular_callback(nsapi_event_t ev, intptr_t ptr)
 
 ControlPlane_netif *AT_CellularContext::get_cp_netif()
 {
-    if (!_cp_netif) {
-        _cp_netif = new AT_ControlPlane_netif(_at, _cid, *get_device());
-    }
-    return _cp_netif;
+    tr_error("No control plane interface available from base context!");
+    return NULL;
 }
 
 nsapi_error_t AT_CellularContext::setup_control_plane_opt()
@@ -1037,11 +1055,19 @@ nsapi_error_t AT_CellularContext::setup_control_plane_opt()
     ciot_opt_ret = _nw->set_ciot_optimization_config(mbed::CellularNetwork::CIOT_OPT_CONTROL_PLANE,
                                                      mbed::CellularNetwork::PREFERRED_UE_OPT_CONTROL_PLANE,
                                                      callback(this, &AT_CellularContext::ciot_opt_cb));
-    if (ciot_opt_ret == NSAPI_ERROR_OK) {
-        // assume network supports CIoT optimizations until ciot_opt_cb
-        _cp_in_use = true;
+
+    if (ciot_opt_ret != NSAPI_ERROR_OK) {
+        return ciot_opt_ret;
     }
-    return ciot_opt_ret;
+
+    //wait for control plane opt call back to release semaphore
+    _cp_opt_semaphore.try_acquire_for(CP_OPT_NW_REPLY_TIMEOUT);
+
+    if (_cp_in_use) {
+        return NSAPI_ERROR_OK;
+    }
+
+    return NSAPI_ERROR_DEVICE_ERROR;
 }
 
 void AT_CellularContext::ciot_opt_cb(mbed::CellularNetwork::CIoT_Supported_Opt  ciot_opt)
@@ -1049,18 +1075,15 @@ void AT_CellularContext::ciot_opt_cb(mbed::CellularNetwork::CIoT_Supported_Opt  
     if (ciot_opt == mbed::CellularNetwork::CIOT_OPT_CONTROL_PLANE ||
             ciot_opt == mbed::CellularNetwork::CIOT_OPT_BOTH) {
         _cp_in_use = true;
-    } else {
-        _cp_in_use = false;
     }
+    _cp_opt_semaphore.release();
 }
 
 void AT_CellularContext::set_disconnect()
 {
     tr_debug("AT_CellularContext::set_disconnect()");
-    if (_is_connected) {
-        _is_connected = false;
-        _device->cellular_callback(NSAPI_EVENT_CONNECTION_STATUS_CHANGE, NSAPI_STATUS_DISCONNECTED, this);
-    }
+    _is_connected = false;
+    _device->cellular_callback(NSAPI_EVENT_CONNECTION_STATUS_CHANGE, NSAPI_STATUS_DISCONNECTED, this);
 }
 
 void AT_CellularContext::set_cid(int cid)

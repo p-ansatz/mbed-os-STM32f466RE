@@ -42,7 +42,7 @@ public:
      *
      *  Closes socket if the socket is still open.
      */
-    virtual ~Socket() = default;
+    virtual ~Socket() {}
 
     /** Closes the socket.
      *

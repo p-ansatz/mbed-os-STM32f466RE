@@ -32,6 +32,12 @@
 
 TLSSocketWrapper::TLSSocketWrapper(Socket *transport, const char *hostname, control_transport control) :
     _transport(transport),
+    _timeout(-1),
+#ifdef MBEDTLS_X509_CRT_PARSE_C
+    _cacert(NULL),
+    _clicert(NULL),
+#endif
+    _ssl_conf(NULL),
     _connect_transport(control == TRANSPORT_CONNECT || control == TRANSPORT_CONNECT_AND_CLOSE),
     _close_transport(control == TRANSPORT_CLOSE || control == TRANSPORT_CONNECT_AND_CLOSE),
     _tls_initialized(false),
@@ -41,7 +47,7 @@ TLSSocketWrapper::TLSSocketWrapper(Socket *transport, const char *hostname, cont
     _ssl_conf_allocated(false)
 {
 #if defined(MBEDTLS_PLATFORM_C)
-    int ret = mbedtls_platform_setup(nullptr);
+    int ret = mbedtls_platform_setup(NULL);
     if (ret != 0) {
         print_mbedtls_error("mbedtls_platform_setup()", ret);
     }
@@ -68,12 +74,12 @@ TLSSocketWrapper::~TLSSocketWrapper()
     mbedtls_ssl_free(&_ssl);
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
     mbedtls_pk_free(&_pkctx);
-    set_own_cert(nullptr);
-    set_ca_chain(nullptr);
+    set_own_cert(NULL);
+    set_ca_chain(NULL);
 #endif
-    set_ssl_config(nullptr);
+    set_ssl_config(NULL);
 #if defined(MBEDTLS_PLATFORM_C)
-    mbedtls_platform_teardown(nullptr);
+    mbedtls_platform_teardown(NULL);
 #endif /* MBEDTLS_PLATFORM_C */
 }
 
@@ -142,7 +148,7 @@ nsapi_error_t TLSSocketWrapper::set_client_cert_key(const void *client_cert, siz
     }
     mbedtls_pk_init(&_pkctx);
     if ((ret = mbedtls_pk_parse_key(&_pkctx, static_cast<const unsigned char *>(client_private_key_pem),
-                                    client_private_key_len, nullptr, 0)) != 0) {
+                                    client_private_key_len, NULL, 0)) != 0) {
         print_mbedtls_error("mbedtls_pk_parse_key", ret);
         mbedtls_x509_crt_free(crt);
         delete crt;
@@ -188,8 +194,8 @@ nsapi_error_t TLSSocketWrapper::start_handshake(bool first_call)
 
 
 #if MBED_CONF_TLS_SOCKET_DEBUG_LEVEL > 0
-    mbedtls_ssl_conf_verify(get_ssl_config(), my_verify, nullptr);
-    mbedtls_ssl_conf_dbg(get_ssl_config(), my_debug, nullptr);
+    mbedtls_ssl_conf_verify(get_ssl_config(), my_verify, NULL);
+    mbedtls_ssl_conf_dbg(get_ssl_config(), my_debug, NULL);
     mbedtls_debug_set_threshold(MBED_CONF_TLS_SOCKET_DEBUG_LEVEL);
 #endif
 
@@ -201,7 +207,7 @@ nsapi_error_t TLSSocketWrapper::start_handshake(bool first_call)
 
     _transport->set_blocking(false);
     _transport->sigio(mbed::callback(this, &TLSSocketWrapper::event));
-    mbedtls_ssl_set_bio(&_ssl, this, ssl_send, ssl_recv, nullptr);
+    mbedtls_ssl_set_bio(&_ssl, this, ssl_send, ssl_recv, NULL);
 
     _tls_initialized = true;
 
@@ -535,7 +541,7 @@ void TLSSocketWrapper::set_ca_chain(mbedtls_x509_crt *crt)
     }
     _cacert = crt;
     tr_debug("mbedtls_ssl_conf_ca_chain()");
-    mbedtls_ssl_conf_ca_chain(get_ssl_config(), _cacert, nullptr);
+    mbedtls_ssl_conf_ca_chain(get_ssl_config(), _cacert, NULL);
 }
 
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
@@ -553,9 +559,9 @@ mbedtls_ssl_config *TLSSocketWrapper::get_ssl_config()
                                                MBEDTLS_SSL_TRANSPORT_STREAM,
                                                MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
             print_mbedtls_error("mbedtls_ssl_config_defaults", ret);
-            set_ssl_config(nullptr);
+            set_ssl_config(NULL);
             MBED_ERROR(MBED_MAKE_ERROR(MBED_MODULE_NETWORK_STACK, MBED_ERROR_CODE_OUT_OF_MEMORY), "mbedtls_ssl_config_defaults() failed");
-            return nullptr;
+            return NULL;
         }
         /* It is possible to disable authentication by passing
          * MBEDTLS_SSL_VERIFY_NONE in the call to mbedtls_ssl_conf_authmode()
@@ -605,7 +611,7 @@ nsapi_error_t TLSSocketWrapper::close()
         }
     }
 
-    _transport = nullptr;
+    _transport = NULL;
 
     return ret;
 }
@@ -679,7 +685,7 @@ Socket *TLSSocketWrapper::accept(nsapi_error_t *err)
     if (err) {
         *err = NSAPI_ERROR_UNSUPPORTED;
     }
-    return nullptr;
+    return NULL;
 }
 
 nsapi_error_t TLSSocketWrapper::listen(int)

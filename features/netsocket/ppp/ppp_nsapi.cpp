@@ -133,9 +133,7 @@ const char *nsapi_ppp_get_ip_addr(FileHandle *stream)
     static char ip_addr[IPADDR_STRLEN_MAX];
 
     if (stream == my_stream) {
-        SocketAddress addr;
-        if (my_interface->get_ip_address(&addr) == NSAPI_ERROR_OK) {
-            strncpy(ip_addr, addr.get_ip_address(), IPADDR_STRLEN_MAX);
+        if (my_interface->get_ip_address(ip_addr, IPADDR_STRLEN_MAX)) {
             return ip_addr;
         }
     }
@@ -150,9 +148,7 @@ const char *nsapi_ppp_get_netmask(FileHandle *stream)
 
     static char netmask[IPADDR_STRLEN_MAX];
     if (stream == my_stream) {
-        SocketAddress addr;
-        if (my_interface->get_netmask(&addr)) {
-            strncpy(netmask, addr.get_ip_address(), IPADDR_STRLEN_MAX);
+        if (my_interface->get_netmask(netmask, IPADDR_STRLEN_MAX)) {
             return netmask;
         }
     }
@@ -167,9 +163,7 @@ const char *nsapi_ppp_get_gw_addr(FileHandle *stream)
 
     static char gwaddr[IPADDR_STRLEN_MAX];
     if (stream == my_stream) {
-        SocketAddress addr;
-        if (my_interface->get_gateway(&addr)) {
-            strncpy(gwaddr, addr.get_ip_address(), IPADDR_STRLEN_MAX);
+        if (my_interface->get_gateway(gwaddr, IPADDR_STRLEN_MAX)) {
             return gwaddr;
         }
     }

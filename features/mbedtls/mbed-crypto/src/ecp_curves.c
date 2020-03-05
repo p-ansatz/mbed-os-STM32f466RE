@@ -29,7 +29,6 @@
 
 #include "mbedtls/ecp.h"
 #include "mbedtls/platform_util.h"
-#include "mbedtls/error.h"
 
 #include <string.h>
 
@@ -670,7 +669,7 @@ static int ecp_mod_p256k1( mbedtls_mpi * );
  */
 static int ecp_use_curve25519( mbedtls_ecp_group *grp )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
 
     /* Actually ( A + 2 ) / 4 */
     MBEDTLS_MPI_CHK( mbedtls_mpi_read_string( &grp->A, 16, "01DB42" ) );
@@ -710,7 +709,7 @@ cleanup:
 static int ecp_use_curve448( mbedtls_ecp_group *grp )
 {
     mbedtls_mpi Ns;
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
 
     mbedtls_mpi_init( &Ns );
 
@@ -901,7 +900,7 @@ static inline void carry64( mbedtls_mpi_uint *dst, mbedtls_mpi_uint *carry )
  */
 static int ecp_mod_p192( mbedtls_mpi *N )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     mbedtls_mpi_uint c = 0;
     mbedtls_mpi_uint *p, *end;
 
@@ -992,7 +991,7 @@ static inline void sub32( uint32_t *dst, uint32_t src, signed char *carry )
  * (see fix_negative for the motivation of C)
  */
 #define INIT( b )                                                       \
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;                                                            \
+    int ret;                                                            \
     signed char c = 0, cc;                                              \
     uint32_t cur;                                                       \
     size_t i = 0, bits = (b);                                           \
@@ -1028,7 +1027,7 @@ static inline void sub32( uint32_t *dst, uint32_t src, signed char *carry )
  */
 static inline int fix_negative( mbedtls_mpi *N, signed char c, mbedtls_mpi *C, size_t bits )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
 
     /* C = - c * 2^(bits + 32) */
 #if !defined(MBEDTLS_HAVE_INT64)
@@ -1186,7 +1185,7 @@ cleanup:
  */
 static int ecp_mod_p521( mbedtls_mpi *N )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t i;
     mbedtls_mpi M;
     mbedtls_mpi_uint Mp[P521_WIDTH + 1];
@@ -1235,7 +1234,7 @@ cleanup:
  */
 static int ecp_mod_p255( mbedtls_mpi *N )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t i;
     mbedtls_mpi M;
     mbedtls_mpi_uint Mp[P255_WIDTH + 2];
@@ -1292,7 +1291,7 @@ cleanup:
  */
 static int ecp_mod_p448( mbedtls_mpi *N )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t i;
     mbedtls_mpi M, Q;
     mbedtls_mpi_uint Mp[P448_WIDTH + 1], Qp[P448_WIDTH];
@@ -1354,7 +1353,7 @@ cleanup:
 static inline int ecp_mod_koblitz( mbedtls_mpi *N, mbedtls_mpi_uint *Rp, size_t p_limbs,
                                    size_t adjust, size_t shift, mbedtls_mpi_uint mask )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t i;
     mbedtls_mpi M, R;
     mbedtls_mpi_uint Mp[P_KOBLITZ_MAX + P_KOBLITZ_R + 1];

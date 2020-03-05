@@ -65,7 +65,6 @@ int8_t net_6lowpan_nd_parameter_set(const nd_parameters_s *p)
 
     return 0;
 #else
-    (void) p;
     return -2;
 #endif
 }
@@ -90,8 +89,6 @@ int8_t net_6lowpan_nd_timer_base_tick_set(uint8_t base_tick_x_100ms)
     }
 
     nd_base_tick = base_tick_x_100ms;
-#else
-    (void) base_tick_x_100ms;
 #endif
     return 0;
 }
@@ -106,7 +103,5 @@ void net_6lowpan_nd_parameter_read(nd_parameters_s *p)
 {
 #ifdef HAVE_6LOWPAN_ND
     *p = nd_params;
-#else
-    (void) p;
 #endif
 }

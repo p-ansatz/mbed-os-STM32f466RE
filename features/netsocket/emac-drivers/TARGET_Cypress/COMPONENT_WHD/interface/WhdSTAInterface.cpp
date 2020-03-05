@@ -250,9 +250,7 @@ nsapi_error_t WhdSTAInterface::connect()
 
     // initialize wiced, this is noop if already init
     if (!_whd_emac.powered_up) {
-        if(!_whd_emac.power_up()) {
-            return NSAPI_ERROR_DEVICE_ERROR;
-        }
+        _whd_emac.power_up();
     }
 
     res = whd_management_set_event_handler(_whd_emac.ifp, sta_link_change_events,
@@ -324,9 +322,7 @@ nsapi_error_t WhdSTAInterface::connect()
 void WhdSTAInterface::wifi_on()
 {
     if (!_whd_emac.powered_up) {
-        if(!_whd_emac.power_up()) {
-            CY_ASSERT(false);
-        }
+        _whd_emac.power_up();
     }
 }
 
@@ -359,15 +355,6 @@ nsapi_error_t WhdSTAInterface::disconnect()
     }
     whd_emac_wifi_link_state_changed(_whd_emac.ifp, WHD_FALSE);
 
-    // remove the interface added in connect
-    if (_interface) {
-        nsapi_error_t err = _stack.remove_ethernet_interface(&_interface);
-        if (err != NSAPI_ERROR_OK) {
-            return err;
-        }
-        _iface_shared.iface_sta = NULL;
-    }
-
     res = whd_wifi_deregister_event_handler(_whd_emac.ifp, sta_link_update_entry);
     if (res != WHD_SUCCESS) {
         return whd_toerror(res);
@@ -388,14 +375,11 @@ int8_t WhdSTAInterface::get_rssi()
 
     // initialize wiced, this is noop if already init
     if (!_whd_emac.powered_up) {
-        if(!_whd_emac.power_up()) {
-            CY_ASSERT(false);
-        }
+        _whd_emac.power_up();
     }
 
     res = (whd_result_t)whd_wifi_get_rssi(_whd_emac.ifp, &rssi);
     if (res != 0) {
-        CY_ASSERT(false);
         return 0;
     }
 
@@ -470,9 +454,7 @@ int WhdSTAInterface::internal_scan(WiFiAccessPoint *aps, unsigned count, scan_re
 
     // initialize wiced, this is noop if already init
     if (!_whd_emac.powered_up) {
-        if(!_whd_emac.power_up()) {
-            return NSAPI_ERROR_DEVICE_ERROR;
-        }
+        _whd_emac.power_up();
     }
 
     interal_scan_data.sema = new Semaphore();
@@ -484,6 +466,7 @@ int WhdSTAInterface::internal_scan(WiFiAccessPoint *aps, unsigned count, scan_re
     interal_scan_data.result_buff = new std::vector<whd_scan_result_t>();
     whd_result_t whd_res;
     int res;
+
 
     whd_res = (whd_result_t)whd_wifi_scan(_whd_emac.ifp, WHD_SCAN_TYPE_ACTIVE, WHD_BSS_TYPE_ANY,
                                           NULL, NULL, NULL, NULL, whd_scan_handler, &internal_scan_result, &interal_scan_data);

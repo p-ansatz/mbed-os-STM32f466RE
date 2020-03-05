@@ -47,10 +47,9 @@ public:
      * NetworkInterface API.
      */
     class Interface {
-    protected:
-        ~Interface() = default;
-
     public:
+        virtual ~Interface() {}
+
         /** Connect the interface to the network
          *
          * Sets up a connection on specified network interface, using DHCP or provided network details. If the @a dhcp is set to
@@ -113,17 +112,38 @@ public:
         /** @copydoc NetworkStack::get_ip_address */
         virtual nsapi_error_t get_ip_address(SocketAddress *address) = 0;
 
+        MBED_DEPRECATED_SINCE("mbed-os-5.15", "String-based APIs are deprecated")
+        virtual char *get_ip_address(char *buf, nsapi_size_t buflen) = 0;
+
         /** @copydoc NetworkStack::get_ipv6_link_local_address */
         virtual nsapi_error_t get_ipv6_link_local_address(SocketAddress *address)
         {
             return NSAPI_ERROR_UNSUPPORTED;
         }
 
+        /** @copydoc NetworkStack::get_ip_address_if */
+        virtual nsapi_error_t get_ip_address_if(SocketAddress *address, const char *interface_name)
+        {
+            return NSAPI_ERROR_UNSUPPORTED;
+        }
+
+        MBED_DEPRECATED_SINCE("mbed-os-5.15", "String-based APIs are deprecated")
+        virtual char *get_ip_address_if(char *buf, nsapi_size_t buflen, const char *interface_name)
+        {
+            return NULL;
+        };
+
         /** @copydoc NetworkStack::get_netmask */
         virtual nsapi_error_t get_netmask(SocketAddress *address) = 0;
 
+        MBED_DEPRECATED_SINCE("mbed-os-5.15", "String-based APIs are deprecated")
+        virtual char *get_netmask(char *buf, nsapi_size_t buflen) = 0;
+
         /** @copydoc NetworkStack::get_gateway */
         virtual nsapi_error_t get_gateway(SocketAddress *address) = 0;
+
+        MBED_DEPRECATED_SINCE("mbed-os-5.15", "String-based APIs are deprecated")
+        virtual char *get_gateway(char *buf, nsapi_size_t buflen) = 0;
     };
 
     /** Register a network interface with the IP stack
@@ -149,11 +169,6 @@ public:
         return NSAPI_ERROR_UNSUPPORTED;
     };
 
-    virtual nsapi_error_t remove_ethernet_interface(Interface **interface_out)
-    {
-        return NSAPI_ERROR_OK;
-    };
-
     virtual nsapi_error_t remove_l3ip_interface(Interface **interface_out)
     {
         return NSAPI_ERROR_OK;
@@ -168,10 +183,6 @@ public:
     {
     }
 
-    OnboardNetworkStack *onboardNetworkStack() final
-    {
-        return this;
-    }
 };
 
 #endif /* MBED_IPSTACK_H */

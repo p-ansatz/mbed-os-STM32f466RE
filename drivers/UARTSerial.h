@@ -48,39 +48,28 @@ namespace mbed {
  *
  */
 
-class
-    MBED_DEPRECATED_SINCE(
-        "mbed-os-6.0.0",
-        "Use BufferedSerial instead."
-    ) UARTSerial : private SerialBase, public FileHandle, private NonCopyable<UARTSerial> {
+class UARTSerial : private SerialBase, public FileHandle, private NonCopyable<UARTSerial> {
 
 public:
 
-    /** @deprecated
-     *  Create a UARTSerial port, connected to the specified transmit and receive pins, with a particular baud rate.
+    /** Create a UARTSerial port, connected to the specified transmit and receive pins, with a particular baud rate.
      *  @param tx Transmit pin
      *  @param rx Receive pin
      *  @param baud The baud rate of the serial port (optional, defaults to MBED_CONF_PLATFORM_DEFAULT_SERIAL_BAUD_RATE)
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     UARTSerial(PinName tx, PinName rx, int baud = MBED_CONF_PLATFORM_DEFAULT_SERIAL_BAUD_RATE);
 
-    /** @deprecated
-     *  Create a UARTSerial port, connected to the specified transmit and receive pins, with a particular baud rate.
+    /** Create a UARTSerial port, connected to the specified transmit and receive pins, with a particular baud rate.
      *  @param static_pinmap reference to structure which holds static pinmap
      *  @param baud The baud rate of the serial port (optional, defaults to MBED_CONF_PLATFORM_DEFAULT_SERIAL_BAUD_RATE)
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     UARTSerial(const serial_pinmap_t &static_pinmap, int baud = MBED_CONF_PLATFORM_DEFAULT_SERIAL_BAUD_RATE);
 
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual ~UARTSerial();
 
-    /** @deprecated
-     *  Equivalent to POSIX poll(). Derived from FileHandle.
+    /** Equivalent to POSIX poll(). Derived from FileHandle.
      *  Provides a mechanism to multiplex input/output over a set of file handles.
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual short poll(short events) const;
 
     /* Resolve ambiguities versus our private SerialBase
@@ -89,8 +78,7 @@ public:
     using FileHandle::readable;
     using FileHandle::writable;
 
-    /** @deprecated
-     *  Write the contents of a buffer to a file
+    /** Write the contents of a buffer to a file
      *
      *  Follows POSIX semantics:
      *
@@ -102,11 +90,9 @@ public:
      *  @param length   The number of bytes to write
      *  @return         The number of bytes written, negative error on failure
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual ssize_t write(const void *buffer, size_t length);
 
-    /** @deprecated
-     *  Read the contents of a file into a buffer
+    /** Read the contents of a file into a buffer
      *
      *  Follows POSIX semantics:
      *
@@ -118,29 +104,23 @@ public:
      *  @param length   The number of bytes to read
      *  @return         The number of bytes read, 0 at end of file, negative error on failure
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual ssize_t read(void *buffer, size_t length);
 
-    /** @deprecated
-     *  Close a file
+    /** Close a file
      *
      *  @return         0 on success, negative error code on failure
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual int close();
 
-    /** @deprecated
-     *  Check if the file in an interactive terminal device
+    /** Check if the file in an interactive terminal device
      *
      *  @return         True if the file is a terminal
      *  @return         False if the file is not a terminal
      *  @return         Negative error code on failure
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual int isatty();
 
-    /** @deprecated
-     * Move the file position to a given offset from from a given location
+    /** Move the file position to a given offset from from a given location
      *
      * Not valid for a device type FileHandle like UARTSerial.
      * In case of UARTSerial, returns ESPIPE
@@ -152,43 +132,35 @@ public:
      *      SEEK_END to start from end of file
      *  @return         The new offset of the file, negative error code on failure
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual off_t seek(off_t offset, int whence);
 
-    /** @deprecated
-     *  Flush any buffers associated with the file
+    /** Flush any buffers associated with the file
      *
      *  @return         0 on success, negative error code on failure
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual int sync();
 
-    /** @deprecated
-     *  Set blocking or non-blocking mode
+    /** Set blocking or non-blocking mode
      *  The default is blocking.
      *
      *  @param blocking true for blocking mode, false for non-blocking mode.
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual int set_blocking(bool blocking)
     {
         _blocking = blocking;
         return 0;
     }
 
-    /** @deprecated
-     *  Check current blocking or non-blocking mode for file operations.
+    /** Check current blocking or non-blocking mode for file operations.
      *
      *  @return             true for blocking mode, false for non-blocking mode.
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual bool is_blocking() const
     {
         return _blocking;
     }
 
-    /** @deprecated
-     * Enable or disable input
+    /** Enable or disable input
      *
      * Control enabling of device for input. This is primarily intended
      * for temporary power-saving; the overall ability of the device to operate for
@@ -201,11 +173,9 @@ public:
      *  @return             0 on success
      *  @return             Negative error code on failure
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual int enable_input(bool enabled);
 
-    /** @deprecated
-     * Enable or disable output
+    /** Enable or disable output
      *
      * Control enabling of device for output. This is primarily intended
      * for temporary power-saving; the overall ability of the device to operate for
@@ -218,11 +188,9 @@ public:
      *  @return             0 on success
      *  @return             Negative error code on failure
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual int enable_output(bool enabled);
 
-    /** @deprecated
-     *  Register a callback on state change of the file.
+    /** Register a callback on state change of the file.
      *
      *  The specified callback will be called on state changes such as when
      *  the file can be written to or read from.
@@ -239,11 +207,9 @@ public:
      *
      *  @param func     Function to call on state change
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     virtual void sigio(Callback<void()> func);
 
-    /** @deprecated
-     *  Setup interrupt handler for DCD line
+    /** Setup interrupt handler for DCD line
      *
      *  If DCD line is connected, an IRQ handler will be setup.
      *  Does nothing if DCD is NC, i.e., not connected.
@@ -251,15 +217,12 @@ public:
      *  @param dcd_pin         Pin-name for DCD
      *  @param active_high     a boolean set to true if DCD polarity is active low
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     void set_data_carrier_detect(PinName dcd_pin, bool active_high = false);
 
-    /** @deprecated
-     *  Set the baud rate
+    /** Set the baud rate
      *
      *  @param baud   The baud rate
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     void set_baud(int baud);
 
     // Expose private SerialBase::Parity as UARTSerial::Parity
@@ -271,14 +234,12 @@ public:
     using SerialBase::Forced1;
     using SerialBase::Forced0;
 
-    /** @deprecated
-     *  Set the transmission format used by the serial port
+    /** Set the transmission format used by the serial port
      *
      *  @param bits The number of bits in a word (5-8; default = 8)
      *  @param parity The parity used (None, Odd, Even, Forced1, Forced0; default = None)
      *  @param stop_bits The number of stop bits (1 or 2; default = 1)
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     void set_format(int bits = 8, Parity parity = UARTSerial::None, int stop_bits = 1);
 
 #if DEVICE_SERIAL_FC
@@ -291,42 +252,30 @@ public:
     using SerialBase::CTS;
     using SerialBase::RTSCTS;
 
-    /** @deprecated
-     *  Set the flow control type on the serial port
+    /** Set the flow control type on the serial port
      *
      *  @param type the flow control type (Disabled, RTS, CTS, RTSCTS)
      *  @param flow1 the first flow control pin (RTS for RTS or RTSCTS, CTS for CTS)
      *  @param flow2 the second flow control pin (CTS for RTSCTS)
      */
-    MBED_DEPRECATED("The class has been deprecated and will be removed in the future.")
     void set_flow_control(Flow type, PinName flow1 = NC, PinName flow2 = NC);
 #endif
 
 private:
 
-    /** @deprecated
-     * SerialBase lock override
-     */
+    /** SerialBase lock override */
     virtual void lock(void);
 
-    /** @deprecated
-     * SerialBase unlock override
-     */
+    /** SerialBase unlock override */
     virtual void unlock(void);
 
-    /** @deprecated
-     * Acquire mutex
-     */
+    /** Acquire mutex */
     virtual void api_lock(void);
 
-    /** @deprecated
-     * Release mutex
-     */
+    /** Release mutex */
     virtual void api_unlock(void);
 
-    /** @deprecated
-     * Unbuffered write - invoked when write called from critical section
-     */
+    /** Unbuffered write - invoked when write called from critical section */
     ssize_t write_unbuffered(const char *buf_ptr, size_t length);
 
     void enable_rx_irq();
@@ -334,8 +283,7 @@ private:
     void enable_tx_irq();
     void disable_tx_irq();
 
-    /** @deprecated
-     *  Software serial buffers
+    /** Software serial buffers
      *  By default buffer size is 256 for TX and 256 for RX. Configurable through mbed_app.json
      */
     CircularBuffer<char, MBED_CONF_DRIVERS_UART_SERIAL_RXBUF_SIZE> _rxbuf;
@@ -352,16 +300,14 @@ private:
     bool _rx_enabled;
     InterruptIn *_dcd_irq;
 
-    /** @deprecated
-     *  Device Hanged up
+    /** Device Hanged up
      *  Determines if the device hanged up on us.
      *
      *  @return True, if hanged up
      */
     bool hup() const;
 
-    /** @deprecated
-     *  ISRs for serial
+    /** ISRs for serial
      *  Routines to handle interrupts on serial pins.
      *  Copies data into Circular Buffer.
      *  Reports the state change to File handle.

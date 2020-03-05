@@ -40,9 +40,6 @@
 #include "KVStore.h"
 #include "PlatformMutex.h"
 
-// Forward declarations
-struct  mbedtls_entropy_context;
-
 namespace mbed {
 
 /** TDBStore class
@@ -272,14 +269,12 @@ public:
 
 #if !defined(DOXYGEN_ONLY)
 private:
-    // Forward declaration
-    struct inc_set_handle_t;
 
     PlatformMutex _mutex;
     bool _is_initialized;
     KVStore *_underlying_kv, *_rbp_kv;
-    mbedtls_entropy_context *_entropy;
-    inc_set_handle_t *_ih;
+    void *_entropy;
+    void *_inc_set_handle;
     uint8_t *_scratch_buf;
 
     /**

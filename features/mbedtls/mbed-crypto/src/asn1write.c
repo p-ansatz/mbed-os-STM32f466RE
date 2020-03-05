@@ -28,7 +28,6 @@
 #if defined(MBEDTLS_ASN1_WRITE_C)
 
 #include "mbedtls/asn1write.h"
-#include "mbedtls/error.h"
 
 #include <string.h>
 
@@ -132,7 +131,7 @@ int mbedtls_asn1_write_raw_buffer( unsigned char **p, unsigned char *start,
 #if defined(MBEDTLS_BIGNUM_C)
 int mbedtls_asn1_write_mpi( unsigned char **p, unsigned char *start, const mbedtls_mpi *X )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t len = 0;
 
     // Write the MPI
@@ -169,7 +168,7 @@ cleanup:
 
 int mbedtls_asn1_write_null( unsigned char **p, unsigned char *start )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t len = 0;
 
     // Write NULL
@@ -183,7 +182,7 @@ int mbedtls_asn1_write_null( unsigned char **p, unsigned char *start )
 int mbedtls_asn1_write_oid( unsigned char **p, unsigned char *start,
                     const char *oid, size_t oid_len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t len = 0;
 
     MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_raw_buffer( p, start,
@@ -198,7 +197,7 @@ int mbedtls_asn1_write_algorithm_identifier( unsigned char **p, unsigned char *s
                                      const char *oid, size_t oid_len,
                                      size_t par_len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t len = 0;
 
     if( par_len == 0 )
@@ -217,7 +216,7 @@ int mbedtls_asn1_write_algorithm_identifier( unsigned char **p, unsigned char *s
 
 int mbedtls_asn1_write_bool( unsigned char **p, unsigned char *start, int boolean )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t len = 0;
 
     if( *p - start < 1 )
@@ -232,9 +231,9 @@ int mbedtls_asn1_write_bool( unsigned char **p, unsigned char *start, int boolea
     return( (int) len );
 }
 
-static int asn1_write_tagged_int( unsigned char **p, unsigned char *start, int val, int tag )
+int mbedtls_asn1_write_int( unsigned char **p, unsigned char *start, int val )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t len = 0;
 
     do
@@ -256,25 +255,15 @@ static int asn1_write_tagged_int( unsigned char **p, unsigned char *start, int v
     }
 
     MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_len( p, start, len ) );
-    MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_tag( p, start, tag ) );
+    MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_tag( p, start, MBEDTLS_ASN1_INTEGER ) );
 
     return( (int) len );
-}
-
-int mbedtls_asn1_write_int( unsigned char **p, unsigned char *start, int val )
-{
-    return( asn1_write_tagged_int( p, start, val, MBEDTLS_ASN1_INTEGER ) );
-}
-
-int mbedtls_asn1_write_enum( unsigned char **p, unsigned char *start, int val )
-{
-    return( asn1_write_tagged_int( p, start, val, MBEDTLS_ASN1_ENUMERATED ) );
 }
 
 int mbedtls_asn1_write_tagged_string( unsigned char **p, unsigned char *start, int tag,
     const char *text, size_t text_len )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t len = 0;
 
     MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_raw_buffer( p, start,
@@ -350,7 +339,7 @@ int mbedtls_asn1_write_named_bitstring( unsigned char **p,
 int mbedtls_asn1_write_bitstring( unsigned char **p, unsigned char *start,
                           const unsigned char *buf, size_t bits )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t len = 0;
     size_t unused_bits, byte_len;
 
@@ -383,7 +372,7 @@ int mbedtls_asn1_write_bitstring( unsigned char **p, unsigned char *start,
 int mbedtls_asn1_write_octet_string( unsigned char **p, unsigned char *start,
                              const unsigned char *buf, size_t size )
 {
-    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    int ret;
     size_t len = 0;
 
     MBEDTLS_ASN1_CHK_ADD( len, mbedtls_asn1_write_raw_buffer( p, start, buf, size ) );

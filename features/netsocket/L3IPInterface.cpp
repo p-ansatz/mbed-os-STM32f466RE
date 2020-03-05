@@ -24,7 +24,13 @@ using namespace mbed;
 /* Interface implementation */
 L3IPInterface::L3IPInterface(L3IP &l3ip, OnboardNetworkStack &stack) :
     _l3ip(l3ip),
-    _stack(stack)
+    _stack(stack),
+    _interface(NULL),
+    _dhcp(true),
+    _blocking(true),
+    _ip_address(),
+    _netmask(),
+    _gateway()
 {
 }
 
@@ -33,13 +39,16 @@ L3IPInterface::~ L3IPInterface()
     _stack.remove_l3ip_interface(&_interface);
 }
 
-nsapi_error_t L3IPInterface::set_network(const SocketAddress &ip_address, const SocketAddress &netmask, const SocketAddress &gateway)
+nsapi_error_t L3IPInterface::set_network(const char *ip_address, const char *netmask, const char *gateway)
 {
     _dhcp = false;
 
-    _ip_address = ip_address;
-    _netmask = netmask;
-    _gateway = gateway;
+    strncpy(_ip_address, ip_address ? ip_address : "", sizeof(_ip_address));
+    _ip_address[sizeof(_ip_address) - 1] = '\0';
+    strncpy(_netmask, netmask ? netmask : "", sizeof(_netmask));
+    _netmask[sizeof(_netmask) - 1] = '\0';
+    strncpy(_gateway, gateway ? gateway : "", sizeof(_gateway));
+    _gateway[sizeof(_gateway) - 1] = '\0';
 
     return NSAPI_ERROR_OK;
 }
@@ -49,6 +58,8 @@ nsapi_error_t L3IPInterface::set_dhcp(bool dhcp)
     _dhcp = dhcp;
     return NSAPI_ERROR_OK;
 }
+
+
 
 nsapi_error_t L3IPInterface::connect()
 {
@@ -62,9 +73,9 @@ nsapi_error_t L3IPInterface::connect()
     }
 
     return _interface->bringup(_dhcp,
-                               _ip_address ? _ip_address.get_ip_address() : 0,
-                               _netmask ? _netmask.get_ip_address() : 0,
-                               _gateway ? _gateway.get_ip_address() : 0,
+                               _ip_address[0] ? _ip_address : 0,
+                               _netmask[0] ? _netmask : 0,
+                               _gateway[0] ? _gateway : 0,
                                DEFAULT_STACK,
                                _blocking);
 }
@@ -77,35 +88,31 @@ nsapi_error_t L3IPInterface::disconnect()
     return NSAPI_ERROR_NO_CONNECTION;
 }
 
-nsapi_error_t L3IPInterface::get_ip_address(SocketAddress *address)
+const char *L3IPInterface::get_ip_address()
 {
-    if (_interface && _interface->get_ip_address(address) == NSAPI_ERROR_OK) {
-        _ip_address = *address;
-        return NSAPI_ERROR_OK;
+    if (_interface && _interface->get_ip_address(_ip_address, sizeof(_ip_address))) {
+        return _ip_address;
     }
 
-    return NSAPI_ERROR_NO_CONNECTION;
+    return NULL;
 }
 
-nsapi_error_t L3IPInterface::get_netmask(SocketAddress *address)
+const char *L3IPInterface::get_netmask()
 {
-    if (_interface && _interface->get_netmask(address) == NSAPI_ERROR_OK) {
-        _netmask = *address;
-        return NSAPI_ERROR_OK;
+    if (_interface && _interface->get_netmask(_netmask, sizeof(_netmask))) {
+        return _netmask;
     }
 
-    return NSAPI_ERROR_NO_ADDRESS;
+    return 0;
 }
 
-nsapi_error_t L3IPInterface::get_gateway(SocketAddress *address)
+const char *L3IPInterface::get_gateway()
 {
-    return NSAPI_ERROR_NO_CONNECTION;
-    if (_interface && _interface->get_gateway(address) == NSAPI_ERROR_OK) {
-        _gateway = *address;
-        return NSAPI_ERROR_OK;
+    if (_interface && _interface->get_gateway(_gateway, sizeof(_gateway))) {
+        return _gateway;
     }
 
-    return NSAPI_ERROR_NO_ADDRESS;
+    return 0;
 }
 
 char *L3IPInterface::get_interface_name(char *interface_name)

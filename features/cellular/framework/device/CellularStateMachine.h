@@ -22,6 +22,12 @@
 #include "CellularCommon.h"
 #include "PlatformMutex.h"
 
+#ifdef MBED_CONF_RTOS_PRESENT
+namespace rtos {
+class Thread;
+}
+#endif
+
 namespace mbed {
 
 class CellularDevice;
@@ -31,9 +37,11 @@ class CellularDevice;
  *  Finite State Machine for attaching to cellular network. Used by CellularDevice.
  */
 class CellularStateMachine {
-public:
+private:
+    // friend of CellularDevice so that it's the only way to close/delete this class.
+    friend class CellularDevice;
+    friend class AT_CellularDevice;
     friend class UT_CellularStateMachine; // for unit tests
-
     /** Constructor
      *
      * @param device    reference to CellularDevice
@@ -126,21 +134,8 @@ public:
     /** Reset the state machine to init state. After reset state machine can be used again to run to wanted state.
      */
     void reset();
-
-    /** Get retry timeout array
-     *
-     * @param timeout   Pointer to timeout array
-     * @param array_len Max lenght of the array
-     */
-    void get_retry_timeout_array(uint16_t *timeout, int &array_len) const;
-
-    /** Change all cellular state timeouts
-     *
-     * @param timeout Timeout value (milliseconds)
-     */
-    void set_timeout(int timeout);
-
 private:
+    void get_retry_timeout_array(uint16_t *timeout, int &array_len) const;
     bool power_on();
     bool open_sim();
     bool get_network_registration(CellularNetwork::RegistrationType type, CellularNetwork::RegistrationStatus &status, bool &is_registered);
@@ -167,6 +162,11 @@ private:
     void change_timeout(const int &timeout);
 
 private:
+
+#ifdef MBED_CONF_RTOS_PRESENT
+    rtos::Thread *_queue_thread;
+#endif
+
     CellularDevice &_cellularDevice;
     CellularState _state;
     CellularState _next_state;
@@ -199,7 +199,8 @@ private:
     int _state_timeout_registration;
     int _state_timeout_network;
     int _state_timeout_connect; // timeout for PS attach, PDN connect and socket operations
-
+    // Change all cellular state timeouts to `timeout`
+    void set_timeout(int timeout);
     cell_signal_quality_t _signal_quality;
 };
 

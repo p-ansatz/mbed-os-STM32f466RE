@@ -214,7 +214,7 @@ void {{partition.name|lower}}_init(spm_partition_t *partition)
 /****************** SPM DB initialization *************************************/
 spm_partition_t g_partitions[] = {
 {% for partition in service_partitions %}
-    {{spm_db_entry(partition)}}
+{{spm_db_entry(partition)}}
 
 {% endfor %}
 #ifdef USE_PSA_TEST_PARTITIONS

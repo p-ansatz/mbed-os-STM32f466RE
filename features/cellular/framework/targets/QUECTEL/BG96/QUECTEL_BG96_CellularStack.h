@@ -22,6 +22,7 @@
 
 namespace mbed {
 
+#define BG96_SOCKET_MAX 12
 #define BG96_CREATE_SOCKET_TIMEOUT 150000 //150 seconds
 #define BG96_CLOSE_SOCKET_TIMEOUT 20000 // TCP socket max timeout is >10sec
 #define BG96_MAX_RECV_SIZE 1500
@@ -35,7 +36,7 @@ typedef enum {
 
 class QUECTEL_BG96_CellularStack : public AT_CellularStack {
 public:
-    QUECTEL_BG96_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type, AT_CellularDevice &device);
+    QUECTEL_BG96_CellularStack(ATHandler &atHandler, int cid, nsapi_ip_stack_t stack_type);
     virtual ~QUECTEL_BG96_CellularStack();
 
 protected: // NetworkStack
@@ -58,6 +59,10 @@ protected: // NetworkStack
                                      int optname, const void *optval, unsigned optlen);
 
 protected: // AT_CellularStack
+
+    virtual int get_max_socket_count();
+
+    virtual bool is_protocol_supported(nsapi_protocol_t protocol);
 
     virtual nsapi_error_t socket_close_impl(int sock_id);
 

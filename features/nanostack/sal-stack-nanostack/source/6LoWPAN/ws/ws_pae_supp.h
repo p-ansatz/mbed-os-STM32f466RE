@@ -237,16 +237,6 @@ typedef void ws_pae_supp_auth_completed(protocol_interface_info_entry_t *interfa
 typedef int8_t ws_pae_supp_nw_key_insert(protocol_interface_info_entry_t *interface_ptr, sec_prot_gtk_keys_t *gtks);
 
 /**
- * ws_pae_supp_gtk_hash_ptr_get get pointer to GTK hash storage callback
- *
- * \param interface_ptr interface
- *
- * \return pointer to GTK has storage or NULL
- *
- */
-typedef uint8_t *ws_pae_supp_gtk_hash_ptr_get(protocol_interface_info_entry_t *interface_ptr);
-
-/**
  * ws_pae_supp_cb_register register PEA supplicant callbacks
  *
  * \param interface_ptr interface
@@ -255,7 +245,7 @@ typedef uint8_t *ws_pae_supp_gtk_hash_ptr_get(protocol_interface_info_entry_t *i
  * \param nw_key_index_set network send key index callback
  *
  */
-void ws_pae_supp_cb_register(protocol_interface_info_entry_t *interface_ptr, ws_pae_supp_auth_completed *completed, ws_pae_supp_nw_key_insert *nw_key_insert, ws_pae_supp_nw_key_index_set *nw_key_index_set, ws_pae_supp_gtk_hash_ptr_get *gtk_hash_ptr_get);
+void ws_pae_supp_cb_register(protocol_interface_info_entry_t *interface_ptr, ws_pae_supp_auth_completed *completed, ws_pae_supp_nw_key_insert *nw_key_insert, ws_pae_supp_nw_key_index_set *nw_key_index_set);
 
 #else
 

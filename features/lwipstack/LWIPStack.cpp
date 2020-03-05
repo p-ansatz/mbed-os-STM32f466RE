@@ -191,43 +191,30 @@ LWIP::call_in_callback_cb_t LWIP::get_call_in_callback()
     return cb;
 }
 
-nsapi_error_t LWIP::get_ip_address(SocketAddress *address)
+const char *LWIP::get_ip_address()
 {
     if (!default_interface) {
-        return NSAPI_ERROR_NO_ADDRESS;
+        return NULL;
     }
 
-    return get_ip_address_if(address, nullptr);
-}
+    const ip_addr_t *addr = get_ip_addr(true, &default_interface->netif);
 
-nsapi_error_t LWIP::get_ip_address_if(SocketAddress *address, const char *interface_name)
-{
-    if (!address) {
-        return NSAPI_ERROR_PARAMETER;
-    }
-
-    const ip_addr_t *addr;
-
-    if (interface_name == NULL) {
-        addr = get_ip_addr(true, &default_interface->netif);
-    } else {
-        addr = get_ip_addr(true, netif_find(interface_name));
+    if (!addr) {
+        return NULL;
     }
 #if LWIP_IPV6
     if (IP_IS_V6(addr)) {
-        char buf[NSAPI_IPv6_SIZE];
-        address->set_ip_address(ip6addr_ntoa_r(ip_2_ip6(addr), buf, NSAPI_IPv6_SIZE));
-        return NSAPI_ERROR_OK;
+        return ip6addr_ntoa_r(ip_2_ip6(addr), ip_address, sizeof(ip_address));
     }
 #endif
 #if LWIP_IPV4
     if (IP_IS_V4(addr)) {
-        char buf[NSAPI_IPv4_SIZE];
-        address->set_ip_address(ip4addr_ntoa_r(ip_2_ip4(addr), buf, NSAPI_IPv4_SIZE));
-        return NSAPI_ERROR_OK;
+        return ip4addr_ntoa_r(ip_2_ip4(addr), ip_address, sizeof(ip_address));
     }
 #endif
-    return NSAPI_ERROR_UNSUPPORTED;
+#if LWIP_IPV6 && LWIP_IPV4
+    return NULL;
+#endif
 }
 
 nsapi_error_t LWIP::socket_open(nsapi_socket_t *handle, nsapi_protocol_t proto)
@@ -290,9 +277,7 @@ nsapi_error_t LWIP::socket_close(nsapi_socket_t handle)
         _event_flag.wait_any(TCP_CLOSED_FLAG, TCP_CLOSE_TIMEOUT);
     }
 #endif
-    if (s->buf) {
-        pbuf_free(s->buf);
-    }
+    pbuf_free(s->buf);
     err_t err = netconn_delete(s->conn);
     arena_dealloc(s);
     return err_remap(err);

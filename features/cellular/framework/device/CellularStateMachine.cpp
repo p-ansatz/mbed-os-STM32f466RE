@@ -18,7 +18,8 @@
 #include "CellularStateMachine.h"
 #include "CellularDevice.h"
 #include "CellularLog.h"
-#include "CellularInformation.h"
+#include "Thread.h"
+#include "mbed_shared_queues.h"
 
 #ifndef MBED_TRACE_MAX_LEVEL
 #define MBED_TRACE_MAX_LEVEL TRACE_LEVEL_INFO
@@ -50,8 +51,11 @@ const int DEVICE_READY = 0x04;
 namespace mbed {
 
 CellularStateMachine::CellularStateMachine(CellularDevice &device, events::EventQueue &queue, CellularNetwork &nw) :
+#ifdef MBED_CONF_RTOS_PRESENT
+    _queue_thread(0),
+#endif
     _cellularDevice(device), _state(STATE_INIT), _next_state(_state), _target_state(_state),
-    _event_status_cb(), _network(nw), _queue(queue), _sim_pin(0), _retry_count(0),
+    _event_status_cb(0), _network(nw), _queue(queue), _sim_pin(0), _retry_count(0),
     _event_timeout(-1), _event_id(-1), _plmn(0), _command_success(false),
     _is_retry(false), _cb_data(), _current_event(CellularDeviceReady), _status(0)
 {
@@ -102,6 +106,16 @@ void CellularStateMachine::reset()
 void CellularStateMachine::stop()
 {
     tr_debug("CellularStateMachine stop");
+#ifdef MBED_CONF_RTOS_PRESENT
+    if (_queue_thread) {
+        _queue_thread->terminate();
+        delete _queue_thread;
+        _queue_thread = NULL;
+    }
+#else
+    _queue.chain(NULL);
+#endif
+
     reset();
     _event_id = STM_STOPPED;
 }
@@ -244,8 +258,8 @@ bool CellularStateMachine::get_network_registration(CellularNetwork::Registratio
             break;
     }
 
-    if (is_registered || is_roaming) {
-        tr_info("Roaming %u Registered %u", is_roaming, is_registered);
+    if (is_roaming) {
+        tr_info("Roaming network.");
     }
 
     return true;
@@ -346,7 +360,7 @@ bool CellularStateMachine::device_ready()
 #endif // MBED_CONF_CELLULAR_DEBUG_AT
 
     send_event_cb(CellularDeviceReady);
-    _cellularDevice.set_ready_cb(nullptr);
+    _cellularDevice.set_ready_cb(0);
 
     return true;
 }
@@ -361,26 +375,6 @@ void CellularStateMachine::state_device_ready()
     if (_cb_data.error == NSAPI_ERROR_OK) {
         _cb_data.error = _cellularDevice.init();
         if (_cb_data.error == NSAPI_ERROR_OK) {
-
-#if MBED_CONF_MBED_TRACE_ENABLE
-            CellularInformation *info = _cellularDevice.open_information();
-
-            char *buf = new (std::nothrow) char[2048]; // size from 3GPP TS 27.007
-            if (buf) {
-                if (info->get_manufacturer(buf, 2048) == NSAPI_ERROR_OK) {
-                    tr_info("Modem manufacturer: %s", buf);
-                }
-                if (info->get_model(buf, 2048) == NSAPI_ERROR_OK) {
-                    tr_info("Modem model: %s", buf);
-                }
-                if (info->get_revision(buf, 2048) == NSAPI_ERROR_OK) {
-                    tr_info("Modem revision: %s", buf);
-                }
-                delete[] buf;
-            }
-            _cellularDevice.close_information();
-#endif // MBED_CONF_MBED_TRACE_ENABLE
-
             if (device_ready()) {
                 _status = 0;
                 enter_to_state(STATE_SIM_PIN);
@@ -394,7 +388,6 @@ void CellularStateMachine::state_device_ready()
             }
         }
     }
-
     if (_cb_data.error != NSAPI_ERROR_OK) {
         if (_retry_count == 0) {
             _cellularDevice.set_ready_cb(callback(this, &CellularStateMachine::device_ready_cb));
@@ -650,11 +643,24 @@ void CellularStateMachine::event()
 
 nsapi_error_t CellularStateMachine::start_dispatch()
 {
-    if (_event_id != -1) {
-        tr_warn("Canceling ongoing event (%d)", _event_id);
-        _queue.cancel(_event_id);
+#ifdef MBED_CONF_RTOS_PRESENT
+    if (!_queue_thread) {
+        _queue_thread = new rtos::Thread(osPriorityNormal, 2048, NULL, "stm_queue");
+        _event_id = STM_STOPPED;
     }
+
+    if (_event_id == STM_STOPPED) {
+        if (_queue_thread->start(callback(&_queue, &events::EventQueue::dispatch_forever)) != osOK) {
+            report_failure("Failed to start thread.");
+            stop();
+            return NSAPI_ERROR_NO_MEMORY;
+        }
+    }
+
     _event_id = -1;
+#else
+    _queue.chain(mbed_event_queue());
+#endif
     return NSAPI_ERROR_OK;
 }
 
